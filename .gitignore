@@ -1,0 +1,56 @@
+# ── Dependencies ───────────────────────────────────────────────
+node_modules/
+.pnp/
+.pnp.*
+.yarn/cache
+.yarn/install-state.gz
+
+# ── Build outputs ──────────────────────────────────────────────
+**/.next/
+**/out/
+**/build/
+**/dist/
+**/.turbo/
+**/coverage/
+
+# ── Native / Expo ──────────────────────────────────────────────
+**/.expo/
+**/web-build/
+**/expo-env.d.ts
+**/.kotlin/
+apps/user-mobile/ios/
+apps/user-mobile/android/
+
+# ── Environment & secrets ──────────────────────────────────────
+# Never commit real env files. .env.example is allowed.
+.env
+.env.*
+!.env.example
+
+# ── Convex local dev ──────────────────────────────────────────
+**/.convex/
+
+# ── TypeScript ────────────────────────────────────────────────
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# ── Logs & debug ──────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# ── IDE / OS ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# ── Misc ──────────────────────────────────────────────────────
+*.pem
+*.tgz
+*.zip
+.vercel

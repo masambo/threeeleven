@@ -1,0 +1,39 @@
+:root {
+  --color-app-background: #f8fafc;
+  --color-app-foreground: #0f172a;
+  --color-panel: #ffffff;
+  --color-panel-subtle: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-muted: #64748b;
+
+  /* Brand: blue only */
+  --color-brand: #2563eb;
+  --color-focus: #2563eb;
+
+  /* Status accents — used sparingly */
+  --color-emergency: #ef4444;
+  --color-warning: #f59e0b;
+  --color-safety: #16a34a;
+  --color-success: #16a34a;
+
+  /* Operations surfaces (used by DataTable, MapPanel, QueuePanel) */
+  --color-operations-bg: #ffffff;
+  --color-operations-panel: #ffffff;
+  --color-operations-panel-subtle: #f8fafc;
+  --color-operations-border: #e2e8f0;
+
+  /* Map dots / glow */
+  --color-map-land-dot: #94a3b8;
+  --color-map-land-dot-muted: #cbd5e1;
+  --color-map-glow: rgba(37, 99, 235, 0.22);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}

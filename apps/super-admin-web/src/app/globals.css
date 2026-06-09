@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "../../../../packages/design/src/web.css";
+
+:root {
+  --background: var(--color-app-background);
+  --foreground: var(--color-app-foreground);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: var(--color-focus);
+  color: var(--color-app-background);
+}

@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "225baaaf-f145-489f-a6fa-01e08bf3440e"
+      }
+    },
+    "android": {
+      "package": "com.security311.usermobile"
+    }
+  }
+}

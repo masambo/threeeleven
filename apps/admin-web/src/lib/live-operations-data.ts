@@ -461,8 +461,11 @@ export function mapMarkers({
       details: [
         { label: "Type", value: formatLabel(alert.type) },
         { label: "Triggered", value: timeAgo(alert.triggeredAt) },
+        {
+          label: "GPS",
+          value: `${alert.latitude.toFixed(5)}, ${alert.longitude.toFixed(5)}`,
+        },
         { label: "Contacts", value: String(alert.notifiedContacts.length) },
-        { label: "Services", value: String(alert.notifiedServices.length) },
       ],
       id: alert._id,
       label: shortId("EA", alert._id),

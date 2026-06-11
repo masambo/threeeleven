@@ -13,6 +13,7 @@ import type * as crimeReports from "../crimeReports.js";
 import type * as dangerZones from "../dangerZones.js";
 import type * as emergencyAlerts from "../emergencyAlerts.js";
 import type * as emergencyContacts from "../emergencyContacts.js";
+import type * as emergencyServices from "../emergencyServices.js";
 import type * as health from "../health.js";
 import type * as missingReports from "../missingReports.js";
 import type * as notificationHelpers from "../notificationHelpers.js";
@@ -21,8 +22,10 @@ import type * as proximityAlerts from "../proximityAlerts.js";
 import type * as regions from "../regions.js";
 import type * as safetyAlerts from "../safetyAlerts.js";
 import type * as storage from "../storage.js";
+import type * as stolenItems from "../stolenItems.js";
 import type * as userLocations from "../userLocations.js";
 import type * as users from "../users.js";
+import type * as wantedPersons from "../wantedPersons.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   dangerZones: typeof dangerZones;
   emergencyAlerts: typeof emergencyAlerts;
   emergencyContacts: typeof emergencyContacts;
+  emergencyServices: typeof emergencyServices;
   health: typeof health;
   missingReports: typeof missingReports;
   notificationHelpers: typeof notificationHelpers;
@@ -44,8 +48,10 @@ declare const fullApi: ApiFromModules<{
   regions: typeof regions;
   safetyAlerts: typeof safetyAlerts;
   storage: typeof storage;
+  stolenItems: typeof stolenItems;
   userLocations: typeof userLocations;
   users: typeof users;
+  wantedPersons: typeof wantedPersons;
 }>;
 
 /**

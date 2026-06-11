@@ -2,60 +2,62 @@ import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 const LIST_ARGS = {
   paginationOpts: { cursor: null, numItems: 20 },
 } as const;
 
-const safetyAlertsIcon = require('../../assets/safety_alerts_icon-removebg-preview.webp');
+const wantedPersonsIcon = require('../../assets/final_wanted_persons-removebg-preview.webp');
 
-export default function AlertsScreen() {
-  const alerts = useQuery(api.safetyAlerts.active, LIST_ARGS);
-
-  if (alerts === undefined) {
-    return (
-      <View style={screenStyles.loading}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
-  }
+export default function WantedScreen() {
+  const wantedPersons = useQuery(api.wantedPersons.active, LIST_ARGS);
+  const items = wantedPersons?.page ?? [];
 
   return (
     <ScrollView contentContainerStyle={screenStyles.container} showsVerticalScrollIndicator={false}>
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
-          <Image resizeMode="contain" source={safetyAlertsIcon} style={screenStyles.heroImage} />
+          <Image resizeMode="contain" source={wantedPersonsIcon} style={screenStyles.heroImage} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={screenStyles.eyebrow}>Police notices</Text>
-          <Text style={screenStyles.title}>Safety alerts</Text>
-          <Text style={screenStyles.body}>Official advisories for your area.</Text>
+          <Text style={screenStyles.title}>Wanted persons</Text>
+          <Text style={screenStyles.body}>Persons of interest published by police or admins.</Text>
         </View>
       </View>
 
       <View style={screenStyles.list}>
-        {alerts.page.length === 0 ? (
+        {items.length === 0 ? (
           <View style={screenStyles.emptyCard}>
-            <Ionicons color={colors.textTertiary} name="shield-checkmark-outline" size={42} />
-            <Text style={screenStyles.emptyTitle}>No active notices</Text>
-            <Text style={screenStyles.emptyText}>Police-published advisories will appear here.</Text>
+            <Ionicons color={colors.textTertiary} name="person-outline" size={42} />
+            <Text style={screenStyles.emptyTitle}>No active wanted notices</Text>
+            <Text style={screenStyles.emptyText}>Police-published notices will appear here.</Text>
           </View>
         ) : (
-          alerts.page.map((alert) => (
-            <View key={alert._id} style={screenStyles.alertCard}>
-              <View style={screenStyles.alertTop}>
-                <View style={screenStyles.alertIcon}>
-                  <Ionicons color={colors.warning} name="alert-circle" size={22} />
+          items.map((person) => (
+            <View key={person._id} style={screenStyles.personCard}>
+              <View style={screenStyles.personTop}>
+                <View style={screenStyles.personIcon}>
+                  <Ionicons color="#7C3AED" name="person" size={24} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={screenStyles.cardTitle}>{alert.title}</Text>
-                  <Text style={screenStyles.cardMeta}>
-                    {[alert.region, alert.city].filter(Boolean).join(', ') || 'Regional alert'}
-                  </Text>
+                  <Text style={screenStyles.cardTitle}>{person.name}</Text>
+                  {person.alias ? <Text style={screenStyles.cardMeta}>Alias: {person.alias}</Text> : null}
+                </View>
+                <View style={screenStyles.riskBadge}>
+                  <Text style={screenStyles.riskText}>{person.riskLevel}</Text>
                 </View>
               </View>
-              <Text style={screenStyles.cardBody}>{alert.message}</Text>
+
+              <View style={screenStyles.infoBlock}>
+                <InfoLine icon="shield-outline" text={`Wanted for: ${person.wantedFor}`} />
+                <InfoLine
+                  icon="location-outline"
+                  text={`Last known: ${person.lastKnownLocation ?? 'Unknown'}`}
+                />
+              </View>
+              <Text style={screenStyles.cardBody}>{person.description}</Text>
             </View>
           ))
         )}
@@ -64,13 +66,16 @@ export default function AlertsScreen() {
   );
 }
 
+function InfoLine({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={screenStyles.infoLine}>
+      <Ionicons color={colors.primary} name={icon} size={16} />
+      <Text style={screenStyles.infoText}>{text}</Text>
+    </View>
+  );
+}
+
 const screenStyles = StyleSheet.create({
-  loading: {
-    alignItems: 'center',
-    backgroundColor: '#EEF4FF',
-    flex: 1,
-    justifyContent: 'center',
-  },
   container: {
     backgroundColor: '#EEF4FF',
     flexGrow: 1,
@@ -89,7 +94,7 @@ const screenStyles = StyleSheet.create({
   },
   heroIcon: {
     alignItems: 'center',
-    backgroundColor: colors.warningBg,
+    backgroundColor: '#F0ECFF',
     borderRadius: radii.lg,
     height: 64,
     justifyContent: 'center',
@@ -141,7 +146,7 @@ const screenStyles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
   },
-  alertCard: {
+  personCard: {
     backgroundColor: colors.surface,
     borderColor: 'rgba(17, 24, 39, 0.07)',
     borderRadius: radii.xl,
@@ -154,18 +159,18 @@ const screenStyles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 16,
   },
-  alertTop: {
+  personTop: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.md,
   },
-  alertIcon: {
+  personIcon: {
     alignItems: 'center',
-    backgroundColor: colors.warningBg,
+    backgroundColor: '#F0ECFF',
     borderRadius: radii.md,
-    height: 46,
+    height: 48,
     justifyContent: 'center',
-    width: 46,
+    width: 48,
   },
   cardTitle: {
     color: colors.textPrimary,
@@ -176,6 +181,32 @@ const screenStyles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSizes.sm,
     marginTop: 2,
+  },
+  riskBadge: {
+    backgroundColor: colors.dangerBg,
+    borderRadius: radii.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  riskText: {
+    color: colors.danger,
+    fontSize: fontSizes.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  infoBlock: {
+    gap: spacing.xs,
+  },
+  infoLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  infoText: {
+    color: colors.textSecondary,
+    flex: 1,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
   },
   cardBody: {
     color: colors.textSecondary,

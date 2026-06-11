@@ -1,313 +1,293 @@
-import { type MapAlert, type MapZone, CrimeMap } from '@/components/CrimeMap';
+import { formatCurrentLocation, getCurrentLocation } from '@/lib/location';
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
-import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from 'convex/react';
-import { Link, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useMutation, useQuery } from 'convex/react';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ImageSourcePropType,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PAGINATION = { paginationOpts: { cursor: null, numItems: 20 } } as const;
 
-const SAFETY_TIPS = [
-  { icon: 'location-outline' as const, tip: 'Always let someone know where you are going and when you will be back.' },
-  { icon: 'eye-outline' as const, tip: 'If you see something suspicious, report it immediately.' },
-  { icon: 'call-outline' as const, tip: 'Keep emergency contacts updated in your profile.' },
-];
+const safetyAlertsIcon = require('../../assets/safety_alerts_icon-removebg-preview.webp');
+const reportCrimeIcon = require('../../assets/final_report_crime-removebg-preview.webp');
+const emergencyNumbersIcon = require('../../assets/final_emergency_numbers-removebg-preview.webp');
+const serialCheckIcon = require('../../assets/final_serial_check-removebg-preview.webp');
+const wantedPersonsIcon = require('../../assets/final_wanted_persons-removebg-preview.webp');
 
 export default function HomeScreen() {
-  const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const triggerAlert = useMutation(api.emergencyAlerts.trigger);
 
   const profile = useQuery(api.users.current);
   const alerts = useQuery(api.safetyAlerts.active, PAGINATION);
-  const reports = useQuery(api.crimeReports.mine, PAGINATION);
-  const dangerZones = useQuery(api.dangerZones.active, PAGINATION);
-  const emergencies = useQuery(api.emergencyAlerts.mine, PAGINATION);
+  const [isPanicSending, setIsPanicSending] = useState(false);
 
-  const firstName = profile?.fullName?.split(' ')[0] ?? user?.firstName ?? 'User';
   const locationDisplay = profile?.region ?? 'Namibia';
-
-  // Build map data from live Convex results
-  const mapZones: MapZone[] = (dangerZones?.page ?? [])
-    .filter((z) => z.centerLatitude !== undefined && z.centerLongitude !== undefined)
-    .map((z) => ({
-      id: z._id,
-      latitude: z.centerLatitude as number,
-      longitude: z.centerLongitude as number,
-      radiusMeters: z.radiusMeters,
-      riskLevel: (z.riskLevel ?? 'medium') as MapZone['riskLevel'],
-      name: z.name,
-    }));
-
-  const mapAlerts: MapAlert[] = (alerts?.page ?? [])
-    .filter((a) => a.latitude !== undefined && a.longitude !== undefined)
-    .map((a) => ({
-      id: a._id,
-      latitude: a.latitude as number,
-      longitude: a.longitude as number,
-      title: a.title,
-      severity: a.severity,
-    }));
-
   const alertCount = alerts?.page.length ?? 0;
-  const reportCount = reports?.page.length ?? 0;
-  const zoneCount = dangerZones?.page.length ?? 0;
-  const emergencyCount = emergencies?.page.length ?? 0;
+
+  const quickActions = [
+    {
+      backgroundColor: '#FFF6D8',
+      imageSource: safetyAlertsIcon,
+      label: 'Police Notices',
+      onPress: () => router.push('/(tabs)/alerts'),
+    },
+    {
+      backgroundColor: '#FFE9EC',
+      imageSource: reportCrimeIcon,
+      label: 'Report Crime',
+      onPress: () => router.push('/(tabs)/report'),
+    },
+    {
+      backgroundColor: '#E7F7EF',
+      imageSource: emergencyNumbersIcon,
+      label: 'Emergency Numbers',
+      onPress: () => router.push('/(tabs)/emergency'),
+    },
+    {
+      backgroundColor: '#E8F1FF',
+      imageSource: serialCheckIcon,
+      label: 'Serial Check',
+      onPress: () => router.push('/(tabs)/stolen'),
+    },
+    {
+      backgroundColor: '#F0ECFF',
+      imageSource: wantedPersonsIcon,
+      label: 'Wanted Persons',
+      onPress: () => router.push('/(tabs)/wanted'),
+    },
+    {
+      backgroundColor: '#EAF8FA',
+      imageSource: wantedPersonsIcon,
+      label: 'Missing',
+      onPress: () => router.push('/(tabs)/missing'),
+    },
+  ];
+
+  const sendPanicAlert = async () => {
+    if (isPanicSending) {
+      return;
+    }
+
+    setIsPanicSending(true);
+    try {
+      const currentLocation = await getCurrentLocation();
+      await triggerAlert({
+        type: 'panic',
+        description: 'Panic button triggered from the mobile home screen.',
+        locationDescription: currentLocation
+          ? formatCurrentLocation(currentLocation, locationDisplay)
+          : 'Location permission not granted',
+        latitude: currentLocation?.latitude,
+        longitude: currentLocation?.longitude,
+      });
+
+      Alert.alert(
+        'Panic alert sent',
+        currentLocation
+          ? 'Your current location was included.'
+          : 'The alert was sent without GPS coordinates.',
+      );
+    } catch (error) {
+      Alert.alert('Panic alert failed', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setIsPanicSending(false);
+    }
+  };
+
+  const confirmPanicAlert = () => {
+    Alert.alert('Send panic alert?', 'This will notify regional responders immediately.', [
+      { style: 'cancel', text: 'Cancel' },
+      { onPress: () => void sendPanicAlert(), style: 'destructive', text: 'Send alert' },
+    ]);
+  };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryHeader} />
+      <View pointerEvents="none" style={styles.topBackdrop} />
 
-      {/* ── Blue Header ── */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.locationRow}>
-            <Ionicons color={colors.blue200} name="location-outline" size={14} />
-            <Text style={styles.locationLabel}>Your Location</Text>
+        <View style={styles.headerMain}>
+          <View style={styles.locationIcon}>
+            <Ionicons color={colors.textInverse} name="location" size={18} />
           </View>
-          <Text numberOfLines={1} style={styles.locationValue}>
-            {locationDisplay}
-          </Text>
+          <View style={styles.headerText}>
+            <Text style={styles.locationLabel}>Current area</Text>
+            <Text numberOfLines={1} style={styles.locationValue}>
+              {locationDisplay}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.headerRight}>
+        <View style={styles.headerActions}>
           <Pressable
+            accessibilityLabel="Notifications"
             onPress={() => router.push('/(tabs)/notifications')}
-            style={styles.headerIconBtn}
+            style={styles.headerIconButton}
           >
             <Ionicons color={colors.textInverse} name="notifications-outline" size={22} />
             {alertCount > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{alertCount > 9 ? '9+' : alertCount}</Text>
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{alertCount > 9 ? '9+' : alertCount}</Text>
               </View>
             )}
           </Pressable>
 
-          <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.avatarBtn}>
-            <Ionicons color={colors.primary} name="person" size={18} />
+          <Pressable
+            accessibilityLabel="Profile"
+            onPress={() => router.push('/(tabs)/profile')}
+            style={styles.avatarButton}
+          >
+            <Ionicons color={colors.primaryHeader} name="person" size={20} />
           </Pressable>
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Greeting ── */}
-        <View style={styles.greetingRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>Good day, {firstName} 👋</Text>
-            <Text style={styles.greetingSubtitle}>Stay safe and connected</Text>
-          </View>
-          {!profile?.isVerified && (
-            <View style={styles.unverifiedBadge}>
-              <Text style={styles.unverifiedText}>Unverified</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.panicPanel}>
+          <Pressable
+            accessibilityLabel="Send panic alert"
+            disabled={isPanicSending}
+            onPress={confirmPanicAlert}
+            style={({ pressed }) => [
+              styles.panicOuter,
+              pressed && !isPanicSending ? styles.panicOuterPressed : null,
+            ]}
+          >
+            <View style={styles.panicHighlight} />
+            <View style={styles.panicFace}>
+              {isPanicSending ? (
+                <ActivityIndicator color={colors.textInverse} />
+              ) : (
+                <Text style={styles.panicButtonText}>PANIC</Text>
+              )}
             </View>
-          )}
+            <View style={styles.panicBottomShade} />
+          </Pressable>
         </View>
 
-        {/* ── Stats row ── */}
-        <View style={styles.statsRow}>
-          <StatChip
-            color={colors.danger}
-            colorBg={colors.dangerBg}
-            icon="warning-outline"
-            label="Active alerts"
-            value={alertCount}
-          />
-          <StatChip
-            color={colors.primary}
-            colorBg={colors.primaryLight}
-            icon="document-text-outline"
-            label="My reports"
-            value={reportCount}
-          />
-          <StatChip
-            color={colors.warning}
-            colorBg={colors.warningBg}
-            icon="shield-outline"
-            label="Danger zones"
-            value={zoneCount}
-          />
-        </View>
-
-        {/* ── Crime Map ── */}
-        <View style={styles.mapCard}>
-          <View style={styles.mapHeader}>
-            <Text style={styles.mapTitle}>Community Safety Map</Text>
-            <View style={styles.mapLiveDot} />
-            <Text style={styles.mapLiveLabel}>Live</Text>
-          </View>
-          <CrimeMap
-            alerts={mapAlerts}
-            style={styles.map}
-            zoom={11}
-            zones={mapZones}
-          />
-          <View style={styles.mapLegend}>
-            <LegendItem color={colors.danger} label="Critical" />
-            <LegendItem color="#f97316" label="High" />
-            <LegendItem color={colors.warning} label="Medium" />
-            <LegendItem color={colors.success} label="Low risk" />
-          </View>
-        </View>
-
-        {/* ── Quick Actions ── */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
-          <ActionCard
-            color="#FEF3C7"
-            iconBg="#F59E0B"
-            iconName="warning-outline"
-            label="Safety Alerts"
-            subLabel="View security &amp; safety notifications"
-            onPress={() => router.push('/(tabs)/alerts')}
-          />
-          <ActionCard
-            color="#FEE2E2"
-            iconBg="#EF4444"
-            iconName="document-text-outline"
-            label="Report Crime"
-            subLabel="Report incidents safely"
-            onPress={() => router.push('/(tabs)/report')}
-          />
-          <ActionCard
-            color="#D1FAE5"
-            iconBg="#10B981"
-            iconName="shield-checkmark-outline"
-            label="Emergency Services"
-            subLabel="Quick access to help"
-            onPress={() => router.push('/(tabs)/emergency')}
-          />
-          <ActionCard
-            color="#DBEAFE"
-            iconBg="#2563EB"
-            iconName="search-outline"
-            label="Missing Persons"
-            subLabel="Browse or submit reports"
-            onPress={() => router.push('/(tabs)/missing')}
-          />
-        </View>
-
-        {/* ── Safety Tips ── */}
-        <Text style={styles.sectionTitle}>Safety Tips</Text>
-        <View style={styles.tipsContainer}>
-          {SAFETY_TIPS.map((tip, i) => (
-            <View key={i} style={styles.tipRow}>
-              <View style={styles.tipIcon}>
-                <Ionicons color={colors.primary} name={tip.icon} size={18} />
-              </View>
-              <Text style={styles.tipText}>{tip.tip}</Text>
-            </View>
+          {quickActions.map((action) => (
+            <ActionCard
+              backgroundColor={action.backgroundColor}
+              imageSource={action.imageSource}
+              key={action.label}
+              label={action.label}
+              onPress={action.onPress}
+            />
           ))}
         </View>
-
-        {/* ── SOS Footer ── */}
-        <Link asChild href="/(tabs)/emergency">
-          <Pressable style={styles.sosButton}>
-            <Ionicons color={colors.textInverse} name="alert-circle-outline" size={22} />
-            <Text style={styles.sosText}>Trigger Emergency SOS</Text>
-          </Pressable>
-        </Link>
       </ScrollView>
     </View>
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────
-
-function StatChip({
-  color,
-  colorBg,
-  icon,
-  label,
-  value,
-}: {
-  color: string;
-  colorBg: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: number;
-}) {
-  return (
-    <View style={[chipStyles.chip, { backgroundColor: colorBg, borderColor: color + '33' }]}>
-      <Ionicons color={color} name={icon} size={18} />
-      <Text style={[chipStyles.value, { color }]}>{value}</Text>
-      <Text style={chipStyles.label}>{label}</Text>
-    </View>
-  );
-}
-
 function ActionCard({
-  color,
-  iconBg,
-  iconName,
+  backgroundColor,
+  imageSource,
   label,
   onPress,
-  subLabel,
 }: {
-  color: string;
-  iconBg: string;
-  iconName: keyof typeof Ionicons.glyphMap;
+  backgroundColor: string;
+  imageSource: ImageSourcePropType;
   label: string;
   onPress: () => void;
-  subLabel: string;
 }) {
   return (
-    <Pressable onPress={onPress} style={actionStyles.card}>
-      <View style={[actionStyles.iconWrap, { backgroundColor: color }]}>
-        <Ionicons color={iconBg} name={iconName} size={26} />
+    <Pressable onPress={onPress} style={[actionStyles.card, { backgroundColor }]}>
+      <View style={actionStyles.iconWrap}>
+        <Image resizeMode="contain" source={imageSource} style={actionStyles.iconImage} />
       </View>
       <Text style={actionStyles.label}>{label}</Text>
-      <Text numberOfLines={2} style={actionStyles.sub}>
-        {subLabel}
-      </Text>
     </Pressable>
   );
 }
 
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={legendStyles.item}>
-      <View style={[legendStyles.dot, { backgroundColor: color }]} />
-      <Text style={legendStyles.label}>{label}</Text>
-    </View>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: colors.background,
+    backgroundColor: '#EEF4FF',
     flex: 1,
   },
-
-  // Header
+  topBackdrop: {
+    backgroundColor: colors.primaryHeader,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    height: 188,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
   header: {
     alignItems: 'center',
-    backgroundColor: colors.primaryHeader,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingBottom: spacing.base,
+    paddingBottom: spacing.lg,
     paddingHorizontal: spacing.base,
     paddingTop: spacing.md,
   },
-  headerLeft: { flex: 1 },
-  locationRow: { alignItems: 'center', flexDirection: 'row', gap: 4, marginBottom: 2 },
-  locationLabel: { color: colors.blue200, fontSize: fontSizes.xs, fontWeight: '500' },
+  headerMain: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  locationIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: radii.full,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  headerText: { flex: 1 },
+  locationLabel: {
+    color: colors.blue200,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
   locationValue: {
     color: colors.textInverse,
-    fontSize: fontSizes.lg,
-    fontWeight: '700',
-    maxWidth: 220,
+    fontSize: fontSizes['2xl'],
+    fontWeight: '900',
+    maxWidth: 230,
   },
-  headerRight: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  headerIconBtn: { padding: 4, position: 'relative' },
-  notifBadge: {
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  headerIconButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: radii.full,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 42,
+  },
+  notificationBadge: {
     alignItems: 'center',
     backgroundColor: colors.danger,
     borderColor: colors.primaryHeader,
@@ -321,191 +301,128 @@ const styles = StyleSheet.create({
     right: -2,
     top: -2,
   },
-  notifBadgeText: { color: colors.textInverse, fontSize: 9, fontWeight: '700' },
-  avatarBtn: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radii.full,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-    ...shadows.sm,
-  },
-
-  // Scroll
-  scrollContent: {
-    gap: spacing.base,
-    paddingBottom: spacing['2xl'],
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.base,
-  },
-
-  // Greeting
-  greetingRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  greeting: {
-    color: colors.textPrimary,
-    fontSize: fontSizes['2xl'],
+  notificationBadgeText: {
+    color: colors.textInverse,
+    fontSize: 9,
     fontWeight: '800',
   },
-  greetingSubtitle: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.base,
-    marginTop: 2,
-  },
-  unverifiedBadge: {
-    backgroundColor: colors.warningBg,
-    borderRadius: radii.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-  },
-  unverifiedText: { color: colors.warning, fontSize: fontSizes.xs, fontWeight: '700' },
-
-  // Stats
-  statsRow: { flexDirection: 'row', gap: spacing.sm },
-
-  // Map
-  mapCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  mapHeader: {
+  avatarButton: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-  },
-  mapTitle: { color: colors.textPrimary, flex: 1, fontSize: fontSizes.md, fontWeight: '700' },
-  mapLiveDot: {
-    backgroundColor: colors.success,
+    backgroundColor: colors.surface,
     borderRadius: radii.full,
-    height: 8,
-    width: 8,
-  },
-  mapLiveLabel: { color: colors.success, fontSize: fontSizes.sm, fontWeight: '600' },
-  map: { height: 240 },
-  mapLegend: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.md,
+    height: 42,
     justifyContent: 'center',
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
+    width: 42,
+    ...shadows.sm,
   },
-
-  // Sections
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSizes.md,
-    fontWeight: '700',
-    marginTop: spacing.xs,
+  scrollContent: {
+    gap: spacing.md,
+    paddingBottom: spacing.base,
+    paddingHorizontal: spacing.base,
+    paddingTop: 2,
+  },
+  panicPanel: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: spacing.sm,
+    paddingTop: 0,
+  },
+  panicOuter: {
+    alignItems: 'center',
+    backgroundColor: '#B91C1C',
+    borderColor: '#FECACA',
+    borderWidth: 7,
+    borderRadius: radii.full,
+    height: 202,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#7F1D1D',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.42,
+    shadowRadius: 26,
+    width: 202,
+    elevation: 14,
+  },
+  panicOuterPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.98 }],
+  },
+  panicButtonText: {
+    color: colors.textInverse,
+    fontSize: fontSizes['2xl'],
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  panicHighlight: {
+    backgroundColor: 'rgba(255,255,255,0.32)',
+    borderRadius: radii.full,
+    height: 48,
+    left: 44,
+    position: 'absolute',
+    top: 24,
+    width: 92,
+    zIndex: 2,
+  },
+  panicFace: {
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    borderColor: '#F87171',
+    borderRadius: radii.full,
+    borderWidth: 2,
+    height: 166,
+    justifyContent: 'center',
+    width: 166,
+    zIndex: 3,
+  },
+  panicBottomShade: {
+    backgroundColor: 'rgba(127,29,29,0.34)',
+    bottom: 0,
+    height: 86,
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-
-  // Tips
-  tipsContainer: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.base,
-    ...shadows.sm,
-  },
-  tipRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md },
-  tipIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radii.sm,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  tipText: { color: colors.textSecondary, flex: 1, fontSize: fontSizes.base, lineHeight: 22 },
-
-  // SOS
-  sosButton: {
-    alignItems: 'center',
-    backgroundColor: colors.danger,
-    borderRadius: radii.lg,
-    flexDirection: 'row',
     gap: spacing.sm,
-    justifyContent: 'center',
-    marginTop: spacing.xs,
-    minHeight: 56,
-    ...shadows.md,
-  },
-  sosText: { color: colors.textInverse, fontSize: fontSizes.md, fontWeight: '700' },
-});
-
-const chipStyles = StyleSheet.create({
-  chip: {
-    alignItems: 'center',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    ...shadows.sm,
-  },
-  value: {
-    fontSize: fontSizes.xl,
-    fontWeight: '800',
-  },
-  label: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.xs,
-    textAlign: 'center',
   },
 });
 
 const actionStyles = StyleSheet.create({
   card: {
-    alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    alignItems: 'center',
+    borderColor: 'rgba(17, 24, 39, 0.07)',
     borderRadius: radii.lg,
     borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.base,
-    width: '47.5%',
-    ...shadows.sm,
+    gap: spacing.xs,
+    justifyContent: 'center',
+    minHeight: 106,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    width: '48.7%',
+    ...shadows.md,
+    shadowColor: '#1E3A8A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
   },
   iconWrap: {
     alignItems: 'center',
-    borderRadius: radii.md,
-    height: 52,
+    height: 64,
     justifyContent: 'center',
-    width: 52,
+    width: 76,
+  },
+  iconImage: {
+    height: 62,
+    width: 70,
   },
   label: {
     color: colors.textPrimary,
-    fontSize: fontSizes.base,
-    fontWeight: '700',
+    fontSize: fontSizes.sm,
+    fontWeight: '900',
+    lineHeight: 17,
+    minHeight: 34,
+    textAlign: 'center',
   },
-  sub: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.xs,
-    lineHeight: 16,
-  },
-});
-
-const legendStyles = StyleSheet.create({
-  item: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-  dot: { borderRadius: radii.full, height: 8, width: 8 },
-  label: { color: colors.textSecondary, fontSize: fontSizes.xs },
 });

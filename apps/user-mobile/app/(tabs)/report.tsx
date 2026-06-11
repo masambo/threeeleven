@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -32,80 +33,80 @@ interface CrimeCategory {
 const CRIME_CATEGORIES: CrimeCategory[] = [
   {
     icon: 'person-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#7C3AED',
+    iconBg: '#F0ECFF',
     label: 'Missing Person',
     description: 'Report a missing person to help locate them',
     value: 'missing_person',
   },
   {
     icon: 'search-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#0891B2',
+    iconBg: '#EAF8FA',
     label: 'Lost & Found',
     description: 'Report lost items or help return found items',
     value: 'lost_and_found',
   },
   {
     icon: 'shield-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: colors.danger,
+    iconBg: colors.dangerBg,
     label: 'Theft / Burglary',
     description: 'Report stolen property or break-ins',
     value: 'theft',
   },
   {
     icon: 'construct-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#D97706',
+    iconBg: '#FFF6D8',
     label: 'Vandalism',
     description: 'Property damage or destruction',
     value: 'vandalism',
   },
   {
     icon: 'eye-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: colors.primary,
+    iconBg: '#E8F1FF',
     label: 'Suspicious Activity',
     description: 'Unusual behavior or activities',
     value: 'suspicious',
   },
   {
     icon: 'medical-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#059669',
+    iconBg: '#E7F7EF',
     label: 'Drug-related',
     description: 'Drug dealing or substance abuse',
     value: 'drug_related',
   },
   {
     icon: 'people-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#7C3AED',
+    iconBg: '#F0ECFF',
     label: 'Gender-based Violence',
     description: 'Violence against women or children',
     value: 'gbv',
   },
   {
     icon: 'car-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: colors.primary,
+    iconBg: '#E8F1FF',
     label: 'Traffic Violations',
     description: 'Dangerous driving or traffic incidents',
     value: 'traffic',
   },
   {
     icon: 'leaf-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#059669',
+    iconBg: '#E7F7EF',
     label: 'Environmental Crimes',
     description: 'Illegal dumping or environmental damage',
     value: 'environmental',
   },
   {
     icon: 'briefcase-outline',
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
+    iconColor: '#D97706',
+    iconBg: '#FFF6D8',
     label: 'Corruption',
     description: 'Government or private sector misconduct',
     value: 'corruption',
@@ -130,6 +131,7 @@ const SEVERITY_OPTIONS = [
 type Severity = (typeof SEVERITY_OPTIONS)[number]['value'];
 
 const STEPS = ['Type', 'Details', 'Evidence', 'Review'] as const;
+const reportCrimeIcon = require('../../assets/final_report_crime-removebg-preview.webp');
 
 // ── Main component ────────────────────────────────────────────────────
 
@@ -145,6 +147,7 @@ export default function ReportScreen() {
   const [region, setRegion] = useState('Khomas');
   const [city, setCity] = useState('Windhoek');
   const [severity, setSeverity] = useState<Severity>('medium');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [evidenceImage, setEvidenceImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -193,6 +196,7 @@ export default function ReportScreen() {
           currentLocation !== null ? `${city.trim()}, ${region.trim()}` : undefined,
         incidentAt: Date.now(),
         severity,
+        isAnonymous,
         evidenceImageIds,
       });
       Alert.alert(
@@ -208,6 +212,7 @@ export default function ReportScreen() {
               setDescription('');
               setEvidenceImage(null);
               setSeverity('medium');
+              setIsAnonymous(false);
             },
           },
         ],
@@ -242,6 +247,9 @@ export default function ReportScreen() {
     <SafeAreaView style={screenStyles.safe}>
       {/* ── Screen header ── */}
       <View style={screenStyles.header}>
+        <View style={screenStyles.headerIconWrap}>
+          <Image resizeMode="contain" source={reportCrimeIcon} style={screenStyles.headerIcon} />
+        </View>
         <Text style={screenStyles.headerTitle}>Report Crime</Text>
       </View>
 
@@ -403,6 +411,21 @@ export default function ReportScreen() {
                 ))}
               </View>
             </View>
+
+            <View style={formStyles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={formStyles.fieldLabel}>Report anonymously</Text>
+                <Text style={formStyles.helperText}>
+                  Police/admins can review the incident without showing your identity in the report.
+                </Text>
+              </View>
+              <Switch
+                onValueChange={setIsAnonymous}
+                thumbColor={isAnonymous ? colors.primary : colors.surface}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                value={isAnonymous}
+              />
+            </View>
           </View>
         )}
 
@@ -451,6 +474,8 @@ export default function ReportScreen() {
               <ReviewRow icon="location-outline" label="Location" value={`${city}, ${region}`} />
               <View style={reviewStyles.divider} />
               <ReviewRow icon="alert-outline" label="Severity" value={severity.toUpperCase()} />
+              <View style={reviewStyles.divider} />
+              <ReviewRow icon="eye-off-outline" label="Anonymous" value={isAnonymous ? 'Yes' : 'No'} />
               <View style={reviewStyles.divider} />
               <ReviewRow
                 icon="camera-outline"
@@ -530,20 +555,35 @@ function ReviewRow({
 // ── Styles ────────────────────────────────────────────────────────────
 
 const screenStyles = StyleSheet.create({
-  safe: { backgroundColor: colors.background, flex: 1 },
+  safe: { backgroundColor: '#EEF4FF', flex: 1 },
   header: {
     alignItems: 'center',
     backgroundColor: colors.primaryHeader,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    flexDirection: 'row',
+    gap: spacing.md,
     justifyContent: 'center',
-    paddingBottom: spacing.base,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.base,
     paddingTop: spacing.lg,
   },
-  headerTitle: { color: colors.textInverse, fontSize: fontSizes.lg, fontWeight: '700' },
+  headerIconWrap: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: radii.lg,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  headerIcon: {
+    height: 44,
+    width: 44,
+  },
+  headerTitle: { color: colors.textInverse, fontSize: fontSizes.xl, fontWeight: '900' },
   stepRow: {
     alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
+    backgroundColor: '#EEF4FF',
     flexDirection: 'row',
     justifyContent: 'center',
     paddingHorizontal: spacing.base,
@@ -593,14 +633,14 @@ const gridStyles = StyleSheet.create({
   cell: {
     alignItems: 'flex-start',
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: 'rgba(17, 24, 39, 0.07)',
     borderRadius: radii.lg,
-    borderWidth: 1.5,
+    borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.base,
     position: 'relative',
     width: '47.5%',
-    ...shadows.sm,
+    ...shadows.md,
   },
   cellSelected: { borderColor: colors.primary, borderWidth: 2 },
   iconWrap: {
@@ -639,7 +679,7 @@ const formStyles = StyleSheet.create({
   fieldGroup: { gap: spacing.sm },
   fieldLabel: { color: colors.textPrimary, fontSize: fontSizes.sm, fontWeight: '600' },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#F8FAFC',
     borderColor: colors.border,
     borderRadius: radii.md,
     borderWidth: 1,
@@ -661,6 +701,18 @@ const formStyles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   severityLabel: { color: colors.textSecondary, fontSize: fontSizes.sm, fontWeight: '600' },
+  helperText: { color: colors.textSecondary, fontSize: fontSizes.xs, lineHeight: 18 },
+  toggleRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: 'rgba(17, 24, 39, 0.07)',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.md,
+    padding: spacing.base,
+    ...shadows.sm,
+  },
 });
 
 const evidenceStyles = StyleSheet.create({
@@ -731,7 +783,7 @@ const navStyles = StyleSheet.create({
   bar: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderTopColor: colors.border,
+    borderTopColor: 'rgba(17, 24, 39, 0.07)',
     borderTopWidth: 1,
     flexDirection: 'row',
     paddingHorizontal: spacing.base,

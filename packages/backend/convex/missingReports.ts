@@ -7,6 +7,7 @@ import { notifyAdmins, notifyUser } from "./notificationHelpers";
 const reportType = v.union(
   v.literal("missing_person"),
   v.literal("lost_item"),
+  v.literal("stolen_item"),
   v.literal("found_person"),
 );
 
@@ -25,6 +26,9 @@ export const create = mutation({
     age: v.optional(v.number()),
     lastSeenLocation: v.optional(v.string()),
     lastSeenAt: v.optional(v.number()),
+    itemName: v.optional(v.string()),
+    itemCategory: v.optional(v.string()),
+    serialNumber: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     photoImageIds: v.optional(v.array(v.id("_storage"))),
@@ -41,6 +45,9 @@ export const create = mutation({
       age: args.age,
       lastSeenLocation: args.lastSeenLocation,
       lastSeenAt: args.lastSeenAt,
+      itemName: args.itemName,
+      itemCategory: args.itemCategory,
+      serialNumber: args.serialNumber,
       contactPhone: args.contactPhone,
       contactEmail: args.contactEmail,
       photoImageIds: args.photoImageIds ?? [],

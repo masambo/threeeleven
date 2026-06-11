@@ -31,6 +31,23 @@ export const trigger = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const now = Date.now();
+    const emergencyContacts = await ctx.db
+      .query("emergencyContacts")
+      .withIndex("by_userId_and_isActive", (q) =>
+        q.eq("userId", user._id).eq("isActive", true),
+      )
+      .take(10);
+    const senderContact = [
+      user.fullName,
+      user.phoneNumber ?? undefined,
+      user.email,
+    ].filter((value): value is string => value !== undefined && value.length > 0);
+    const contactDetails = [
+      senderContact.length > 0 ? `Sender: ${senderContact.join(" | ")}` : undefined,
+      ...emergencyContacts.map(
+        (contact) => `${contact.name}: ${contact.phoneNumber}`,
+      ),
+    ].filter((value): value is string => value !== undefined);
 
     const alertId = await ctx.db.insert("emergencyAlerts", {
       userId: user._id,
@@ -42,7 +59,7 @@ export const trigger = mutation({
       isActive: true,
       triggeredAt: now,
       status: "active",
-      notifiedContacts: args.notifiedContacts ?? [],
+      notifiedContacts: args.notifiedContacts ?? contactDetails,
       notifiedServices: args.notifiedServices ?? [],
       updatedAt: now,
     });

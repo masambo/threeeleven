@@ -19,6 +19,7 @@ const reportStatus = v.union(
 const missingReportType = v.union(
   v.literal("missing_person"),
   v.literal("lost_item"),
+  v.literal("stolen_item"),
   v.literal("found_person"),
 );
 
@@ -156,6 +157,9 @@ export default defineSchema({
     age: v.optional(v.number()),
     lastSeenLocation: v.optional(v.string()),
     lastSeenAt: v.optional(v.number()),
+    itemName: v.optional(v.string()),
+    itemCategory: v.optional(v.string()),
+    serialNumber: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     photoImageIds: v.array(v.id("_storage")),
@@ -169,7 +173,73 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
-    .index("by_reportType_and_status", ["reportType", "status"]),
+    .index("by_reportType_and_status", ["reportType", "status"])
+    .index("by_serialNumber", ["serialNumber"]),
+
+  stolenItems: defineTable({
+    userId: v.id("users"),
+    itemName: v.string(),
+    itemCategory: v.string(),
+    serialNumber: v.string(),
+    normalizedSerialNumber: v.string(),
+    description: v.string(),
+    brand: v.optional(v.string()),
+    model: v.optional(v.string()),
+    color: v.optional(v.string()),
+    lastSeenLocation: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    status: v.union(
+      v.literal("reported"),
+      v.literal("verified"),
+      v.literal("recovered"),
+      v.literal("rejected"),
+    ),
+    isPublic: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_normalizedSerialNumber", ["normalizedSerialNumber"])
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"]),
+
+  wantedPersons: defineTable({
+    name: v.string(),
+    alias: v.optional(v.string()),
+    description: v.string(),
+    lastKnownLocation: v.optional(v.string()),
+    wantedFor: v.string(),
+    riskLevel,
+    imageIds: v.array(v.id("_storage")),
+    imageUrls: v.array(v.string()),
+    isActive: v.boolean(),
+    createdByUserId: v.id("users"),
+    publishedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_riskLevel", ["riskLevel"]),
+
+  emergencyServices: defineTable({
+    name: v.string(),
+    type: v.union(
+      v.literal("police"),
+      v.literal("ambulance"),
+      v.literal("fire"),
+      v.literal("gbv"),
+      v.literal("child_protection"),
+      v.literal("other"),
+    ),
+    phoneNumber: v.string(),
+    region: v.optional(v.string()),
+    city: v.optional(v.string()),
+    isNational: v.boolean(),
+    isActive: v.boolean(),
+    priority: v.number(),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_isActive_and_priority", ["isActive", "priority"])
+    .index("by_region_and_isActive", ["region", "isActive"]),
 
   safetyAlerts: defineTable({
     type: v.string(),

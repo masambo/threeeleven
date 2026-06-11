@@ -107,13 +107,19 @@ export function OperationsShell({ children }: { children: ReactNode }) {
                 <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
               </button>
               <div className="h-8 w-px bg-slate-200" />
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: "h-9 w-9 ring-2 ring-blue-100",
-                  },
-                }}
-              />
+              {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "h-9 w-9 ring-2 ring-blue-100",
+                    },
+                  }}
+                />
+              ) : (
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-blue-600 text-xs font-black text-white ring-2 ring-blue-100">
+                  DA
+                </div>
+              )}
             </div>
           </header>
 

@@ -6,6 +6,14 @@ export type CurrentLocation = {
   accuracy?: number;
 };
 
+export function formatCurrentLocation(location: CurrentLocation, fallbackLabel?: string) {
+  const coordinates = `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`;
+
+  return fallbackLabel !== undefined && fallbackLabel.length > 0
+    ? `${fallbackLabel} - GPS ${coordinates}`
+    : `GPS ${coordinates}`;
+}
+
 export async function getCurrentLocation(): Promise<CurrentLocation | null> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (permission.status !== Location.PermissionStatus.GRANTED) {
@@ -13,8 +21,17 @@ export async function getCurrentLocation(): Promise<CurrentLocation | null> {
   }
 
   const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
+    accuracy: Location.Accuracy.High,
+  }).catch(async () => {
+    return await Location.getLastKnownPositionAsync({
+      maxAge: 120000,
+      requiredAccuracy: 500,
+    });
   });
+
+  if (position === null) {
+    return null;
+  }
 
   return {
     accuracy: position.coords.accuracy ?? undefined,

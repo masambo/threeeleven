@@ -2,9 +2,14 @@
 
 import { SignIn } from "@clerk/nextjs";
 import { Lock, Radar, ShieldCheck } from "lucide-react";
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 
 export default function SignInPage() {
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    redirect("/dashboard");
+  }
+
   return (
     <main className="flex min-h-screen bg-slate-50 text-slate-900">
       {/* ── Left brand panel ── */}

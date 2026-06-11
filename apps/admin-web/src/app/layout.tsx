@@ -1,19 +1,7 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { ProfileSync } from "@/components/profile-sync";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "3:11 Security - Command Center",
@@ -36,15 +24,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
+      style={{
+        "--font-geist-mono":
+          'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace',
+        "--font-geist-sans":
+          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      } as React.CSSProperties}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
-          <ConvexClientProvider>
-            <ProfileSync appType="admin-web" />
-            {children}
-          </ConvexClientProvider>
-        </ClerkProvider>
+        <ConvexClientProvider>
+          <ProfileSync appType="admin-web" />
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   );

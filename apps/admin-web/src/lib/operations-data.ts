@@ -9,6 +9,7 @@ import {
   MapPinned,
   Megaphone,
   ShieldAlert,
+  Smartphone,
   UsersRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -40,8 +41,9 @@ export const adminNavItems = [
   { label: "Community alerts", href: "/dashboard/emergency", icon: ShieldAlert },
   { label: "Crime reports", href: "/dashboard/reports", icon: ClipboardList },
   { label: "Missing reports", href: "/dashboard/missing", icon: FileSearch },
+  { label: "Stolen registry", href: "/dashboard/stolen-items", icon: Smartphone },
+  { label: "Wanted persons", href: "/dashboard/wanted", icon: UsersRound },
   { label: "Safety alerts", href: "/dashboard/alerts", icon: Megaphone },
-  { label: "Danger zones", href: "/dashboard/danger-zones", icon: MapPinned },
   { label: "Users", href: "/dashboard/users", icon: UsersRound },
   { label: "Regions", href: "/dashboard/regions", icon: CircleDot },
 ] as const;

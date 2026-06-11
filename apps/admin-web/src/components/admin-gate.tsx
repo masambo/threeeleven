@@ -14,6 +14,52 @@ export function AdminGate({
   allowedRoles?: AllowedRole[];
   children: ReactNode;
 }) {
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return <DemoAdminGate allowedRoles={allowedRoles}>{children}</DemoAdminGate>;
+  }
+
+  return <ClerkAdminGate allowedRoles={allowedRoles}>{children}</ClerkAdminGate>;
+}
+
+function DemoAdminGate({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: AllowedRole[];
+  children: ReactNode;
+}) {
+  const profile = useQuery(api.users.current, {});
+
+  if (profile === undefined) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-400">
+        Syncing demo admin profile...
+      </div>
+    );
+  }
+
+  const allowed = new Set<string>(allowedRoles);
+  if (profile === null || !allowed.has(profile.role)) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-center">
+        <p className="text-lg font-semibold text-white">Preparing demo admin</p>
+        <p className="max-w-md text-sm text-slate-400">
+          Refresh in a moment while the local demo profile is bootstrapped.
+        </p>
+      </div>
+    );
+  }
+
+  return children;
+}
+
+function ClerkAdminGate({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: AllowedRole[];
+  children: ReactNode;
+}) {
   const { isLoaded, isSignedIn } = useAuth();
   const profile = useQuery(
     api.users.current,

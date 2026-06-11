@@ -1,6 +1,5 @@
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
-import { useAuth, useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { useState } from 'react';
@@ -25,8 +24,6 @@ interface SettingsRow {
 }
 
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
-  const { user } = useUser();
   const profile = useQuery(api.users.current);
   const contacts = useQuery(api.emergencyContacts.listMine, {});
   const upsertContact = useMutation(api.emergencyContacts.upsert);
@@ -36,8 +33,8 @@ export default function ProfileScreen() {
   const [contactPhone, setContactPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fullName = profile?.fullName ?? user?.fullName ?? 'Your Name';
-  const phoneNumber = user?.primaryPhoneNumber?.phoneNumber ?? '';
+  const fullName = profile?.fullName ?? 'Demo User';
+  const phoneNumber = profile?.phoneNumber ?? '';
   const initials = fullName
     .split(' ')
     .map((n) => n[0])
@@ -68,10 +65,7 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { style: 'cancel', text: 'Cancel' },
-      { onPress: () => void signOut(), style: 'destructive', text: 'Sign out' },
-    ]);
+    Alert.alert('Demo mode', 'Clerk login is disabled for now, so there is no session to sign out.');
   };
 
   const ACCOUNT_SETTINGS: SettingsRow[] = [

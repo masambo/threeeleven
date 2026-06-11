@@ -2,7 +2,8 @@ import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +18,8 @@ function normalizeSerial(value: string) {
 }
 
 export default function StolenScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ scannedSerial?: string }>();
   const reportItem = useMutation(api.stolenItems.report);
   const myItems = useQuery(api.stolenItems.mine, LIST_ARGS);
   const insets = useSafeAreaInsets();
@@ -28,6 +31,12 @@ export default function StolenScreen() {
   const [description, setDescription] = useState('');
   const [lastSeenLocation, setLastSeenLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof params.scannedSerial === 'string' && params.scannedSerial.trim().length > 0) {
+      setSearchSerial(params.scannedSerial.trim());
+    }
+  }, [params.scannedSerial]);
 
   const normalizedSearch = normalizeSerial(searchSerial);
   const searchResults = useQuery(
@@ -96,6 +105,10 @@ export default function StolenScreen() {
             value={searchSerial}
           />
         </View>
+        <Pressable onPress={() => router.push('/(tabs)/serial-scanner')} style={screenStyles.scanButton}>
+          <Ionicons color={colors.primary} name="scan-outline" size={20} />
+          <Text style={screenStyles.scanButtonText}>Scan serial number or barcode</Text>
+        </Pressable>
 
         <View style={[screenStyles.resultCard, matches.length > 0 ? screenStyles.resultDanger : null]}>
           <Ionicons
@@ -273,6 +286,23 @@ const screenStyles = StyleSheet.create({
     flex: 1,
     fontSize: fontSizes.base,
     fontWeight: '700',
+  },
+  scanButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderColor: '#BFDBFE',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: spacing.md,
+  },
+  scanButtonText: {
+    color: colors.primary,
+    fontSize: fontSizes.sm,
+    fontWeight: '900',
   },
   resultCard: {
     alignItems: 'flex-start',

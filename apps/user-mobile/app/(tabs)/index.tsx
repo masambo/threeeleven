@@ -3,6 +3,7 @@ import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -29,11 +30,14 @@ const reportCrimeIcon = require('../../assets/final_report_crime-removebg-previe
 const emergencyNumbersIcon = require('../../assets/final_emergency_numbers-removebg-preview.webp');
 const serialCheckIcon = require('../../assets/final_serial_check-removebg-preview.webp');
 const wantedPersonsIcon = require('../../assets/final_wanted_persons-removebg-preview.webp');
+const missingPersonIcon = require('../../assets/missing person.png');
+const alarmSound = require('../../assets/alarmsound.m4a');
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const triggerAlert = useMutation(api.emergencyAlerts.trigger);
+  const alarmPlayer = useAudioPlayer(alarmSound);
 
   const profile = useQuery(api.users.current);
   const alerts = useQuery(api.safetyAlerts.active, PAGINATION);
@@ -53,6 +57,16 @@ export default function HomeScreen() {
       alarmPulse.setValue(0);
       return;
     }
+
+    alarmPlayer.loop = true;
+    alarmPlayer.volume = 1;
+    void setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: false,
+    });
+    void alarmPlayer.seekTo(0).then(() => {
+      alarmPlayer.play();
+    });
 
     const flashLoop = Animated.loop(
       Animated.sequence([
@@ -94,9 +108,11 @@ export default function HomeScreen() {
     return () => {
       flashLoop.stop();
       pulseLoop.stop();
+      alarmPlayer.pause();
+      void alarmPlayer.seekTo(0);
       Vibration.cancel();
     };
-  }, [alarmActive, alarmFlash, alarmPulse]);
+  }, [alarmActive, alarmFlash, alarmPlayer, alarmPulse]);
 
   const quickActions = [
     {
@@ -131,7 +147,7 @@ export default function HomeScreen() {
     },
     {
       backgroundColor: '#EAF8FA',
-      imageSource: wantedPersonsIcon,
+      imageSource: missingPersonIcon,
       label: 'Missing',
       onPress: () => router.push('/(tabs)/missing'),
     },

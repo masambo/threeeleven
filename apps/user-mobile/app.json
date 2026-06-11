@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "infoPlist": {
+        "NSCameraUsageDescription": "3:11 Security uses your camera to scan serial numbers and product barcodes.",
         "NSLocationWhenInUseUsageDescription": "3:11 Security uses your location to attach accurate coordinates to emergency alerts and safety reports."
       },
       "supportsTablet": true
@@ -22,6 +23,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
+        "CAMERA",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
@@ -43,7 +45,14 @@
           "photosPermission": "3:11 Security lets you attach photos as evidence for safety and crime reports."
         }
       ],
-      "expo-router"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "3:11 Security uses your camera to scan serial numbers and product barcodes."
+        }
+      ],
+      "expo-router",
+      "expo-audio"
     ]
   }
 }

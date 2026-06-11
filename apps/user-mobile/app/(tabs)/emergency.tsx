@@ -57,7 +57,8 @@ const DEFAULT_SERVICES: EmergencyService[] = [
 const ambulanceIcon = require('../../assets/emergency_ambulance-removebg-preview.webp');
 const fireTruckIcon = require('../../assets/emergency_fire_truck-removebg-preview.webp');
 const policeIcon = require('../../assets/namibianpolice.webp');
-const cityIcon = require('../../assets/final_emergency_numbers-removebg-preview.webp');
+const cityIcon = require('../../assets/Logo_Windhoek_City_Police.svg.webp');
+const emergencyNumbersIcon = require('../../assets/final_emergency_numbers-removebg-preview.webp');
 
 const SERVICE_COLORS: Record<ServiceType, { background: string; accent: string }> = {
   ambulance: { background: '#E7F7EF', accent: '#059669' },
@@ -84,7 +85,7 @@ export default function EmergencyScreen() {
     >
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
-          <Image resizeMode="contain" source={cityIcon} style={screenStyles.heroImage} />
+          <Image resizeMode="contain" source={emergencyNumbersIcon} style={screenStyles.heroImage} />
         </View>
         <View style={screenStyles.heroText}>
           <Text style={screenStyles.eyebrow}>Emergency numbers</Text>

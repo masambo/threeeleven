@@ -16,6 +16,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="emergency" />
       <Tabs.Screen name="missing" />
       <Tabs.Screen name="stolen" />
+      <Tabs.Screen name="serial-scanner" />
       <Tabs.Screen name="wanted" />
     </Tabs>
   );

@@ -5,7 +5,8 @@ import type { Id } from '@311-security/backend/convex/_generated/dataModel';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation } from 'convex/react';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -33,36 +34,28 @@ interface CrimeCategory {
 
 const CRIME_CATEGORIES: CrimeCategory[] = [
   {
-    icon: 'person-outline',
-    iconColor: '#7C3AED',
-    iconBg: '#F0ECFF',
-    label: 'Missing Person',
-    description: 'Report a missing person to help locate them',
-    value: 'missing_person',
-  },
-  {
-    icon: 'search-outline',
-    iconColor: '#0891B2',
-    iconBg: '#EAF8FA',
-    label: 'Lost & Found',
-    description: 'Report lost items or help return found items',
-    value: 'lost_and_found',
-  },
-  {
-    icon: 'shield-outline',
+    icon: 'phone-portrait-outline',
     iconColor: colors.danger,
     iconBg: colors.dangerBg,
-    label: 'Theft / Burglary',
-    description: 'Report stolen property or break-ins',
+    label: 'Theft / Stolen Item',
+    description: 'Phones, vehicles, documents, or serial-number items',
     value: 'theft',
   },
   {
-    icon: 'construct-outline',
+    icon: 'home-outline',
     iconColor: '#D97706',
     iconBg: '#FFF6D8',
-    label: 'Vandalism',
-    description: 'Property damage or destruction',
-    value: 'vandalism',
+    label: 'Break-in / Burglary',
+    description: 'House, shop, car, or office break-ins',
+    value: 'break_in',
+  },
+  {
+    icon: 'hand-left-outline',
+    iconColor: '#7C3AED',
+    iconBg: '#F0ECFF',
+    label: 'Violence / Assault',
+    description: 'Fighting, threats, domestic violence, or GBV',
+    value: 'violence',
   },
   {
     icon: 'eye-outline',
@@ -73,44 +66,28 @@ const CRIME_CATEGORIES: CrimeCategory[] = [
     value: 'suspicious',
   },
   {
-    icon: 'medical-outline',
-    iconColor: '#059669',
-    iconBg: '#E7F7EF',
-    label: 'Drug-related',
-    description: 'Drug dealing or substance abuse',
-    value: 'drug_related',
-  },
-  {
-    icon: 'people-outline',
+    icon: 'person-outline',
     iconColor: '#7C3AED',
     iconBg: '#F0ECFF',
-    label: 'Gender-based Violence',
-    description: 'Violence against women or children',
-    value: 'gbv',
+    label: 'Missing Person',
+    description: 'Last seen details and photo for review',
+    value: 'missing_person',
   },
   {
     icon: 'car-outline',
-    iconColor: colors.primary,
-    iconBg: '#E8F1FF',
-    label: 'Traffic Violations',
-    description: 'Dangerous driving or traffic incidents',
+    iconColor: '#0891B2',
+    iconBg: '#EAF8FA',
+    label: 'Traffic / Road Incident',
+    description: 'Crashes, dangerous driving, or blocked roads',
     value: 'traffic',
   },
   {
-    icon: 'leaf-outline',
-    iconColor: '#059669',
-    iconBg: '#E7F7EF',
-    label: 'Environmental Crimes',
-    description: 'Illegal dumping or environmental damage',
-    value: 'environmental',
-  },
-  {
-    icon: 'briefcase-outline',
-    iconColor: '#D97706',
-    iconBg: '#FFF6D8',
-    label: 'Corruption',
-    description: 'Government or private sector misconduct',
-    value: 'corruption',
+    icon: 'card-outline',
+    iconColor: colors.primary,
+    iconBg: '#E8F1FF',
+    label: 'Fraud / Scam',
+    description: 'Online scams, fake sellers, or identity fraud',
+    value: 'fraud',
   },
   {
     icon: 'ellipsis-horizontal-outline',
@@ -137,7 +114,10 @@ const reportCrimeIcon = require('../../assets/final_report_crime-removebg-previe
 // ── Main component ────────────────────────────────────────────────────
 
 export default function ReportScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ scannedSerial?: string }>();
   const createReport = useMutation(api.crimeReports.create);
+  const reportStolenItem = useMutation(api.stolenItems.report);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const insets = useSafeAreaInsets();
 
@@ -150,14 +130,33 @@ export default function ReportScreen() {
   const [city, setCity] = useState('Windhoek');
   const [severity, setSeverity] = useState<Severity>('medium');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [itemCategory, setItemCategory] = useState('Phone');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [brandOrModel, setBrandOrModel] = useState('');
   const [evidenceImage, setEvidenceImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isTheftReport = selectedCategory?.value === 'theft';
+  const isMissingPersonReport = selectedCategory?.value === 'missing_person';
   const canAdvanceStep1 = selectedCategory !== null;
-  const canAdvanceStep2 = title.trim().length > 2 && description.trim().length > 5;
+  const canAdvanceStep2 =
+    title.trim().length > 2 &&
+    description.trim().length > 5 &&
+    (!isTheftReport || itemName.trim().length > 1);
+
+  useEffect(() => {
+    if (typeof params.scannedSerial === 'string' && params.scannedSerial.trim().length > 0) {
+      setSerialNumber(params.scannedSerial.trim());
+    }
+  }, [params.scannedSerial]);
 
   const handleSubmit = async () => {
     if (!selectedCategory || !title.trim() || isSubmitting) return;
+    if (isMissingPersonReport && evidenceImage === null) {
+      Alert.alert('Photo required', 'Please add a photo before submitting a missing-person report.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -186,10 +185,18 @@ export default function ReportScreen() {
         evidenceImageIds.push(storageId);
       }
 
+      const detailLines = [
+        description.trim(),
+        isTheftReport ? `Item: ${itemName.trim()}` : '',
+        isTheftReport && itemCategory.trim() ? `Category: ${itemCategory.trim()}` : '',
+        isTheftReport && brandOrModel.trim() ? `Brand/model: ${brandOrModel.trim()}` : '',
+        isTheftReport && serialNumber.trim() ? `Serial/IMEI/VIN: ${serialNumber.trim()}` : '',
+      ].filter(Boolean);
+
       await createReport({
         crimeType: selectedCategory.value,
         title: title.trim(),
-        description: description.trim(),
+        description: detailLines.join('\n\n'),
         region: region.trim(),
         city: city.trim(),
         latitude: currentLocation?.latitude,
@@ -201,6 +208,19 @@ export default function ReportScreen() {
         isAnonymous,
         evidenceImageIds,
       });
+
+      if (isTheftReport && serialNumber.trim().length >= 4) {
+        await reportStolenItem({
+          itemName: itemName.trim(),
+          itemCategory: itemCategory.trim() || 'Item',
+          serialNumber: serialNumber.trim(),
+          brand: brandOrModel.trim() || undefined,
+          description: description.trim(),
+          lastSeenLocation: city.trim() || undefined,
+          isPublic: true,
+        });
+      }
+
       Alert.alert(
         'Report submitted',
         'Your crime report has been submitted and sent to regional admins for review.',
@@ -212,6 +232,10 @@ export default function ReportScreen() {
               setSelectedCategory(null);
               setTitle('');
               setDescription('');
+              setItemName('');
+              setItemCategory('Phone');
+              setSerialNumber('');
+              setBrandOrModel('');
               setEvidenceImage(null);
               setSeverity('medium');
               setIsAnonymous(false);
@@ -293,7 +317,7 @@ export default function ReportScreen() {
         {/* ── Step 1: Crime type ── */}
         {step === 0 && (
           <View style={screenStyles.stepContent}>
-            <Text style={screenStyles.stepTitle}>What type of incident are you reporting?</Text>
+            <Text style={screenStyles.stepTitle}>What happened?</Text>
             <View style={gridStyles.grid}>
               {CRIME_CATEGORIES.map((cat) => (
                 <Pressable
@@ -318,6 +342,13 @@ export default function ReportScreen() {
                   )}
                 </Pressable>
               ))}
+            </View>
+            <View style={screenStyles.noteCard}>
+              <Ionicons color={colors.primary} name="information-circle-outline" size={20} />
+              <Text style={screenStyles.noteText}>
+                Lost & Found works better as a separate non-urgent registry. Use this flow for
+                incidents that need police or admin review.
+              </Text>
             </View>
           </View>
         )}
@@ -362,6 +393,69 @@ export default function ReportScreen() {
                 value={description}
               />
             </View>
+
+            {isTheftReport ? (
+              <View style={formStyles.smartBlock}>
+                <View style={formStyles.smartHeader}>
+                  <Ionicons color={colors.danger} name="barcode-outline" size={20} />
+                  <Text style={formStyles.smartTitle}>Stolen item details</Text>
+                </View>
+                <View style={formStyles.fieldGroup}>
+                  <Text style={formStyles.fieldLabel}>Item name *</Text>
+                  <TextInput
+                    onChangeText={setItemName}
+                    placeholder="e.g. Samsung phone, laptop, bicycle"
+                    placeholderTextColor={colors.textTertiary}
+                    style={formStyles.input}
+                    value={itemName}
+                  />
+                </View>
+                <View style={formStyles.fieldGroup}>
+                  <Text style={formStyles.fieldLabel}>Item category</Text>
+                  <TextInput
+                    onChangeText={setItemCategory}
+                    placeholder="Phone, laptop, vehicle, document"
+                    placeholderTextColor={colors.textTertiary}
+                    style={formStyles.input}
+                    value={itemCategory}
+                  />
+                </View>
+                <View style={formStyles.fieldGroup}>
+                  <Text style={formStyles.fieldLabel}>Serial number / IMEI / VIN</Text>
+                  <View style={formStyles.serialRow}>
+                    <TextInput
+                      autoCapitalize="characters"
+                      onChangeText={setSerialNumber}
+                      placeholder="Scan or enter manually"
+                      placeholderTextColor={colors.textTertiary}
+                      style={[formStyles.input, formStyles.serialInput]}
+                      value={serialNumber}
+                    />
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(tabs)/serial-scanner',
+                          params: { returnTo: 'report' },
+                        })
+                      }
+                      style={formStyles.scanButton}
+                    >
+                      <Ionicons color={colors.primary} name="scan-outline" size={20} />
+                    </Pressable>
+                  </View>
+                </View>
+                <View style={formStyles.fieldGroup}>
+                  <Text style={formStyles.fieldLabel}>Brand or model</Text>
+                  <TextInput
+                    onChangeText={setBrandOrModel}
+                    placeholder="e.g. iPhone 13, Toyota Corolla"
+                    placeholderTextColor={colors.textTertiary}
+                    style={formStyles.input}
+                    value={brandOrModel}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             <View style={formStyles.row}>
               <View style={[formStyles.fieldGroup, { flex: 1 }]}>
@@ -434,7 +528,9 @@ export default function ReportScreen() {
         {/* ── Step 3: Evidence ── */}
         {step === 2 && (
           <View style={screenStyles.stepContent}>
-            <Text style={screenStyles.stepTitle}>Add evidence (optional)</Text>
+            <Text style={screenStyles.stepTitle}>
+              {isMissingPersonReport ? 'Add missing-person photo' : 'Add evidence (optional)'}
+            </Text>
             <View style={evidenceStyles.container}>
               <Pressable onPress={() => void pickEvidenceImage()} style={evidenceStyles.placeholder}>
                 {evidenceImage ? (
@@ -442,9 +538,13 @@ export default function ReportScreen() {
                 ) : (
                   <>
                     <Ionicons color={colors.textTertiary} name="camera-outline" size={48} />
-                    <Text style={evidenceStyles.placeholderText}>Upload evidence photo</Text>
+                    <Text style={evidenceStyles.placeholderText}>
+                      {isMissingPersonReport ? 'Upload person photo' : 'Upload evidence photo'}
+                    </Text>
                     <Text style={evidenceStyles.placeholderSub}>
-                      Add one photo to help admins review your report.
+                      {isMissingPersonReport
+                        ? 'A clear photo helps admins and police identify the missing person.'
+                        : 'Add one photo to help admins review your report.'}
                     </Text>
                   </>
                 )}
@@ -472,6 +572,23 @@ export default function ReportScreen() {
               <ReviewRow icon="text-outline" label="Title" value={title} />
               <View style={reviewStyles.divider} />
               <ReviewRow icon="document-outline" label="Description" value={description} />
+              {isTheftReport ? (
+                <>
+                  <View style={reviewStyles.divider} />
+                  <ReviewRow
+                    icon="barcode-outline"
+                    label="Stolen item"
+                    value={[
+                      itemName,
+                      itemCategory,
+                      brandOrModel,
+                      serialNumber ? `Serial: ${serialNumber}` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' | ')}
+                  />
+                </>
+              ) : null}
               <View style={reviewStyles.divider} />
               <ReviewRow icon="location-outline" label="Location" value={`${city}, ${region}`} />
               <View style={reviewStyles.divider} />
@@ -599,6 +716,23 @@ const screenStyles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.xs,
   },
+  noteCard: {
+    alignItems: 'flex-start',
+    backgroundColor: colors.primaryLight,
+    borderColor: '#BFDBFE',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  noteText: {
+    color: colors.textSecondary,
+    flex: 1,
+    fontSize: fontSizes.sm,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
 });
 
 const stepStyles = StyleSheet.create({
@@ -693,6 +827,43 @@ const formStyles = StyleSheet.create({
   },
   textArea: { height: 120, minHeight: 120, paddingTop: spacing.md },
   row: { flexDirection: 'row', gap: spacing.md },
+  smartBlock: {
+    backgroundColor: colors.surface,
+    borderColor: 'rgba(239,68,68,0.18)',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.base,
+    ...shadows.sm,
+  },
+  smartHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  smartTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.base,
+    fontWeight: '900',
+  },
+  serialRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  serialInput: {
+    flex: 1,
+  },
+  scanButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderColor: '#BFDBFE',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
   severityRow: { flexDirection: 'row', gap: spacing.sm },
   severityBtn: {
     alignItems: 'center',

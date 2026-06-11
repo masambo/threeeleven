@@ -1,7 +1,7 @@
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +22,7 @@ const BARCODE_TYPES = [
 
 export default function SerialScannerScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanned, setIsScanned] = useState(false);
@@ -33,7 +34,7 @@ export default function SerialScannerScreen() {
 
     setIsScanned(true);
     router.replace({
-      pathname: '/(tabs)/stolen',
+      pathname: params.returnTo === 'report' ? '/(tabs)/report' : '/(tabs)/stolen',
       params: { scannedSerial: result.data },
     });
   };

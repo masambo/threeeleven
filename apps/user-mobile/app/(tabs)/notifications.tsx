@@ -23,8 +23,6 @@ function getNotifMeta(type: string): NotifMeta {
       return { icon: 'shield-checkmark-outline', iconColor: colors.primary, iconBg: colors.primaryLight };
     case 'missing_update':
       return { icon: 'person-outline', iconColor: '#8B5CF6', iconBg: '#EDE9FE' };
-    case 'danger_zone_nearby':
-      return { icon: 'location-outline', iconColor: colors.danger, iconBg: colors.dangerBg };
     case 'system':
     default:
       return { icon: 'information-circle-outline', iconColor: colors.info, iconBg: colors.infoBg };

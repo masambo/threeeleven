@@ -93,6 +93,10 @@ body {
   color: var(--color-warning);
 }
 
+.leaflet-signal-marker--heat {
+  color: var(--color-emergency);
+}
+
 .leaflet-signal-marker--zone {
   color: var(--color-safety);
 }

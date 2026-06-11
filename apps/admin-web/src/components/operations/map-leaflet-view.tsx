@@ -14,6 +14,7 @@ const NAMIBIA_BOUNDS: [[number, number], [number, number]] = [
 const layerClassNames = {
   alert: "leaflet-signal-marker--alert",
   emergency: "leaflet-signal-marker--emergency",
+  heat: "leaflet-signal-marker--heat",
   region: "leaflet-signal-marker--region",
   report: "leaflet-signal-marker--report",
   zone: "leaflet-signal-marker--zone",

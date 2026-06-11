@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { Ambulance, Building2, Flame, Phone, Shield } from "lucide-react";
 import { DataTable } from "@/components/operations/data-table";
+import { MapPanel } from "@/components/operations/map-panel";
 import { MetricCard } from "@/components/operations/metric-card";
 import { PageHeader } from "@/components/operations/page-header";
 import type { DataTableRow } from "@/lib/table-rows";
@@ -13,6 +14,7 @@ import {
   LIST_PAGE_ARGS,
   emergencyAlertRows,
   emergencyMetrics,
+  mapMarkers,
   pageItems,
 } from "@/lib/live-operations-data";
 import type { LucideIcon } from "lucide-react";
@@ -53,8 +55,16 @@ export default function EmergencyPage() {
     LIST_PAGE_ARGS,
   );
   const emergencyServices = useQuery(api.emergencyServices.active, {});
+  const regions = useQuery(api.regions.list);
   const emergencyAlerts = pageItems(emergencyAlertsResult);
+  const regionItems = regions ?? [];
   const metrics = emergencyMetrics(emergencyAlerts);
+  const emergencyMarkers = mapMarkers({
+    crimeReports: [],
+    emergencyAlerts,
+    regions: regionItems,
+    safetyAlerts: [],
+  });
 
   const handleAction = async (row: DataTableRow) => {
     const alertId = row.id as Id<"emergencyAlerts">;
@@ -126,6 +136,31 @@ export default function EmergencyPage() {
         onAction={handleAction}
         rows={emergencyAlertRows(emergencyAlerts)}
       />
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+            Panic tracking
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            Active phone locations
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Panic alerts include GPS coordinates and sender contact details when available.
+          </p>
+        </div>
+        <MapPanel
+          detailStats={[
+            { label: "Active alerts", value: metrics.active },
+            { label: "Responding", value: metrics.responding },
+            { label: "Contacts shared", value: metrics.contacts },
+            { label: "Services notified", value: metrics.services },
+          ]}
+          detailSubtitle="Click a panic marker to inspect GPS and contacts"
+          detailTitle="Panic location tracking"
+          markers={emergencyMarkers}
+        />
+      </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

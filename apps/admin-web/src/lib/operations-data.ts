@@ -15,7 +15,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 export type Tone = "brand" | "emergency" | "warning" | "safety" | "muted";
-export type MapLayer = "alert" | "emergency" | "region" | "report" | "zone";
+export type MapLayer = "alert" | "emergency" | "heat" | "region" | "report" | "zone";
 export type MapMarker = {
   id?: string;
   label: string;
@@ -79,7 +79,7 @@ export const priorityQueue = [
     icon: ClipboardList,
   },
   {
-    title: "Danger zone update",
+    title: "Crime hotspot review",
     meta: "Walvis Bay • 44 min ago",
     status: "investigating",
     tone: "brand",
@@ -135,12 +135,12 @@ export const regions = [
   ["Khomas", "Windhoek", "3 active alerts", "4 admins", "Open"],
   ["Erongo", "Swakopmund", "2 pending reports", "2 admins", "Open"],
   ["Kavango East", "Rundu", "1 critical alert", "1 admin", "Open"],
-  ["Karas", "Keetmanshoop", "4 danger zones", "1 admin", "Open"],
+  ["Karas", "Keetmanshoop", "4 crime hotspots", "1 admin", "Open"],
 ];
 
 export const operationalSignals = [
   { label: "Active emergency alerts", value: "3", icon: ShieldAlert, tone: "emergency" },
   { label: "Notifications queued", value: "24", icon: Bell, tone: "brand" },
   { label: "Contacts notified", value: "11", icon: ContactRound, tone: "safety" },
-  { label: "Critical risk zones", value: "2", icon: AlertTriangle, tone: "warning" },
+  { label: "Critical crime hotspots", value: "2", icon: AlertTriangle, tone: "warning" },
 ] satisfies Array<{ label: string; value: string; icon: LucideIcon; tone: Tone }>;

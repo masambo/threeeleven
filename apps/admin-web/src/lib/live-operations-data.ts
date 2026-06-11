@@ -402,15 +402,136 @@ function reportTone(report: Doc<"crimeReports">): Tone {
   return "brand";
 }
 
+function reportSeverityWeight(report: Doc<"crimeReports">) {
+  const severity = report.severity.toLowerCase();
+
+  if (severity === "critical") {
+    return 4;
+  }
+
+  if (severity === "high") {
+    return 3;
+  }
+
+  if (severity === "medium") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function reportLocationKey(report: Doc<"crimeReports">) {
+  if (hasCoordinates(report)) {
+    return `${report.latitude.toFixed(3)},${report.longitude.toFixed(3)}`;
+  }
+
+  return placeFromParts(report.city, report.region);
+}
+
+function reportCoordinates(
+  report: Doc<"crimeReports">,
+  regions: Array<Doc<"regions">>,
+) {
+  if (hasCoordinates(report)) {
+    return {
+      latitude: report.latitude,
+      longitude: report.longitude,
+    };
+  }
+
+  const place = [report.city, report.region]
+    .filter(Boolean)
+    .map((value) => value!.toLowerCase());
+  const region = regions.find(
+    (item) =>
+      hasRegionCoordinates(item) &&
+      place.some((value) => item.name.toLowerCase().includes(value) || value.includes(item.name.toLowerCase())),
+  );
+
+  if (region !== undefined && hasRegionCoordinates(region)) {
+    return {
+      latitude: region.centerLatitude,
+      longitude: region.centerLongitude,
+    };
+  }
+
+  return undefined;
+}
+
+export function crimeHotspots({
+  crimeReports,
+  regions,
+}: {
+  crimeReports: Array<Doc<"crimeReports">>;
+  regions: Array<Doc<"regions">>;
+}) {
+  type Hotspot = {
+    count: number;
+    critical: number;
+    high: number;
+    key: string;
+    latitude: number;
+    longitude: number;
+    place: string;
+    score: number;
+    topCrimeType: string;
+  };
+
+  const groups = new Map<string, Hotspot & { crimeTypes: Map<string, number> }>();
+
+  crimeReports.forEach((report) => {
+    const coordinates = reportCoordinates(report, regions);
+    if (coordinates === undefined) {
+      return;
+    }
+
+    const key = reportLocationKey(report);
+    const existing =
+      groups.get(key) ??
+      {
+        count: 0,
+        critical: 0,
+        high: 0,
+        key,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        place: placeFromParts(report.city, report.region),
+        score: 0,
+        topCrimeType: formatLabel(report.crimeType),
+        crimeTypes: new Map<string, number>(),
+      };
+
+    const severity = report.severity.toLowerCase();
+    existing.count += 1;
+    existing.score += reportSeverityWeight(report);
+    existing.critical += severity === "critical" ? 1 : 0;
+    existing.high += severity === "high" ? 1 : 0;
+    existing.crimeTypes.set(
+      report.crimeType,
+      (existing.crimeTypes.get(report.crimeType) ?? 0) + 1,
+    );
+
+    const [topCrimeType] =
+      Array.from(existing.crimeTypes.entries()).sort((a, b) => b[1] - a[1])[0] ??
+      [report.crimeType, 1];
+    existing.topCrimeType = formatLabel(topCrimeType);
+    groups.set(key, existing);
+  });
+
+  return Array.from(groups.values())
+    .map(({ crimeTypes: _crimeTypes, ...hotspot }) => hotspot)
+    .sort((a, b) => b.score - a.score || b.count - a.count);
+}
+
 export function mapMarkers({
   crimeReports,
-  dangerZones,
+  dangerZones = [],
   emergencyAlerts,
   regions,
   safetyAlerts = [],
 }: {
   crimeReports: Array<Doc<"crimeReports">>;
-  dangerZones: Array<Doc<"dangerZones">>;
+  dangerZones?: Array<Doc<"dangerZones">>;
   emergencyAlerts: Array<Doc<"emergencyAlerts">>;
   regions: Array<Doc<"regions">>;
   safetyAlerts?: Array<Doc<"safetyAlerts">>;
@@ -426,6 +547,32 @@ export function mapMarkers({
   dangerZones.forEach((zone) => add(zone.city || zone.region));
   emergencyAlerts.forEach((alert) => add(alert.locationDescription));
   safetyAlerts.forEach((alert) => add(alert.city || alert.region));
+
+  const heatMarkers: MapMarker[] = crimeHotspots({ crimeReports, regions })
+    .slice(0, 18)
+    .map((hotspot) => ({
+      count: String(hotspot.count),
+      description: `${hotspot.count} reports weighted by severity. Top report type: ${hotspot.topCrimeType}.`,
+      details: [
+        { label: "Reports", value: String(hotspot.count) },
+        { label: "Critical", value: String(hotspot.critical) },
+        { label: "High", value: String(hotspot.high) },
+        { label: "Score", value: String(hotspot.score) },
+      ],
+      geometry: {
+        radiusMeters: Math.min(4200, 650 + hotspot.score * 260),
+        type: "circle",
+      },
+      id: `heat-${hotspot.key}`,
+      label: String(hotspot.count),
+      latitude: hotspot.latitude,
+      layer: "heat",
+      longitude: hotspot.longitude,
+      meta: hotspot.place,
+      status: `${hotspot.score} priority score`,
+      title: `${hotspot.place} hotspot`,
+      tone: hotspot.critical > 0 ? "emergency" : hotspot.high > 0 ? "warning" : "brand",
+    }));
 
   const regionMarkers: MapMarker[] = regions
     .filter(hasRegionCoordinates)
@@ -465,7 +612,13 @@ export function mapMarkers({
           label: "GPS",
           value: `${alert.latitude.toFixed(5)}, ${alert.longitude.toFixed(5)}`,
         },
-        { label: "Contacts", value: String(alert.notifiedContacts.length) },
+        {
+          label: "Contact details",
+          value:
+            alert.notifiedContacts.length > 0
+              ? alert.notifiedContacts.slice(0, 2).join(" / ")
+              : "No contacts shared",
+        },
       ],
       id: alert._id,
       label: shortId("EA", alert._id),
@@ -562,6 +715,7 @@ export function mapMarkers({
 
   return [
     ...emergencyMarkers,
+    ...heatMarkers,
     ...zoneMarkers,
     ...reportMarkers,
     ...safetyAlertMarkers,
@@ -572,6 +726,9 @@ export function mapMarkers({
 export function emergencyMetrics(alerts: Array<Doc<"emergencyAlerts">>) {
   return {
     active: String(alerts.filter((alert) => alert.status === "active").length),
+    contacts: String(
+      alerts.reduce((total, alert) => total + alert.notifiedContacts.length, 0),
+    ),
     responding: String(
       alerts.filter((alert) => alert.status === "responding").length,
     ),

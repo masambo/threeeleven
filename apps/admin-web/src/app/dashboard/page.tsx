@@ -17,6 +17,7 @@ import { MapPanel } from "@/components/operations/map-panel";
 import { StatCard } from "@/components/operations/stat-card";
 import {
   LIST_PAGE_ARGS,
+  crimeHotspots,
   mapMarkers,
   pageItems,
   timeAgo,
@@ -48,18 +49,15 @@ export default function DashboardPage() {
     api.safetyAlerts.listForAdmin,
     LIST_PAGE_ARGS,
   );
-  const dangerZonesResult = useQuery(api.dangerZones.active, LIST_PAGE_ARGS);
   const regions = useQuery(api.regions.list);
 
   const emergencyAlerts = pageItems(emergencyAlertsResult);
   const crimeReports = pageItems(crimeReportsResult);
   const safetyAlerts = pageItems(safetyAlertsResult);
-  const dangerZones = pageItems(dangerZonesResult);
   const regionItems = regions ?? [];
 
   const markers = mapMarkers({
     crimeReports,
-    dangerZones,
     emergencyAlerts,
     regions: regionItems,
     safetyAlerts,
@@ -71,12 +69,17 @@ export default function DashboardPage() {
   const pendingReports = crimeReports.filter(
     (report) => report.status === "pending",
   ).length;
-  const criticalZones = dangerZones.filter(
-    (zone) => zone.riskLevel === "critical",
+  const criticalReports = crimeReports.filter(
+    (report) => report.severity.toLowerCase() === "critical",
   ).length;
   const activeSafetyAlerts = safetyAlerts.filter(
     (alert) => alert.isActive,
   ).length;
+
+  const hotspots = useMemo(
+    () => crimeHotspots({ crimeReports, regions: regionItems }).slice(0, 5),
+    [crimeReports, regionItems],
+  );
 
   const crimeTypeData = useMemo(() => {
     const counts = new Map<string, number>();
@@ -94,10 +97,13 @@ export default function DashboardPage() {
       }));
   }, [crimeReports]);
 
-  const riskSegments = useMemo(() => {
+  const severitySegments = useMemo(() => {
     const counts = { critical: 0, high: 0, low: 0, medium: 0 };
-    dangerZones.forEach((zone) => {
-      counts[zone.riskLevel] = (counts[zone.riskLevel] ?? 0) + 1;
+    crimeReports.forEach((report) => {
+      const severity = report.severity.toLowerCase() as keyof typeof counts;
+      if (severity in counts) {
+        counts[severity] += 1;
+      }
     });
     return [
       { color: COLORS.primary, label: "Critical", value: counts.critical },
@@ -105,7 +111,7 @@ export default function DashboardPage() {
       { color: COLORS.primarySofter, label: "Medium", value: counts.medium },
       { color: COLORS.primarySoftest, label: "Low", value: counts.low },
     ];
-  }, [dangerZones]);
+  }, [crimeReports]);
 
   const recentActivity = useMemo(() => {
     type Event = {
@@ -201,7 +207,7 @@ export default function DashboardPage() {
           sparkline={[2, 4, 3, 5, 6, 4, 7, 8, 6, 9]}
           trend={{
             direction: pendingReports > 5 ? "up" : "flat",
-            label: `${pendingReports} awaiting review`,
+            label: `${criticalReports} critical reports`,
           }}
           value={pendingReports}
         />
@@ -253,10 +259,10 @@ export default function DashboardPage() {
                 </span>
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">
-                    Live Safety Map
+                    Crime Heat Map
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Community signals across Namibia
+                    Report density and active panic locations
                   </p>
                 </div>
               </div>
@@ -272,17 +278,14 @@ export default function DashboardPage() {
                   value: `${emergencyAlerts.length} active`,
                 },
                 { label: "Crime reports", value: `${crimeReports.length}` },
+                { label: "Hotspots", value: `${hotspots.length} ranked` },
                 {
                   label: "Safety alerts",
                   value: `${activeSafetyAlerts} live`,
                 },
-                {
-                  label: "Danger zones",
-                  value: `${dangerZones.length} mapped`,
-                },
               ]}
-              detailSubtitle="Click any marker to inspect"
-              detailTitle="Operational overview"
+              detailSubtitle="Click heat circles or panic markers to inspect"
+              detailTitle="Resource planning overview"
               markers={markers}
             />
           </div>
@@ -292,17 +295,17 @@ export default function DashboardPage() {
         <section className="lg:col-span-3">
           <DashboardCard
             icon={AlertTriangle}
-            subtitle="By severity level"
-            title="Risk Distribution"
+            subtitle="Reported crime severity"
+            title="Crime Severity"
           >
             <div className="flex flex-col items-center gap-4">
               <DonutChart
-                centerLabel="Zones"
-                centerValue={dangerZones.length}
-                segments={riskSegments}
+                centerLabel="Reports"
+                centerValue={crimeReports.length}
+                segments={severitySegments}
               />
               <ul className="grid w-full grid-cols-2 gap-2">
-                {riskSegments.map((segment) => (
+                {severitySegments.map((segment) => (
                   <li
                     className="flex items-center gap-2 rounded-md bg-slate-50 px-2 py-1.5"
                     key={segment.label}
@@ -377,35 +380,49 @@ export default function DashboardPage() {
         <section className="lg:col-span-4">
           <DashboardCard
             icon={AlertTriangle}
-            subtitle="Network health snapshot"
-            title="Critical Status"
+            subtitle="Where resources should be prioritized"
+            title="Top Crime Places"
           >
-            <div className="flex flex-col gap-3">
-              <StatusRow
-                accent={COLORS.danger}
-                label="Critical danger zones"
-                value={criticalZones}
-              />
-              <StatusRow
-                accent={COLORS.warning}
-                label="High-severity reports"
-                value={
-                  crimeReports.filter(
-                    (r) => r.severity.toLowerCase() === "critical",
-                  ).length
-                }
-              />
-              <StatusRow
-                accent={COLORS.primary}
-                label="Active emergencies"
-                value={activeEmergencies}
-              />
-              <StatusRow
-                accent={COLORS.success}
-                label="Regions configured"
-                value={regionItems.length}
-              />
-            </div>
+            {hotspots.length === 0 ? (
+              <EmptyState message="No mapped crime hotspots yet" />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {hotspots.map((hotspot, index) => (
+                  <div
+                    className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                    key={hotspot.key}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {index + 1}. {hotspot.place}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-slate-500">
+                          {hotspot.topCrimeType}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">
+                        {hotspot.score}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="rounded-md bg-white p-2">
+                        <p className="font-bold text-slate-900">{hotspot.count}</p>
+                        <p className="text-slate-500">Reports</p>
+                      </div>
+                      <div className="rounded-md bg-white p-2">
+                        <p className="font-bold text-red-600">{hotspot.critical}</p>
+                        <p className="text-slate-500">Critical</p>
+                      </div>
+                      <div className="rounded-md bg-white p-2">
+                        <p className="font-bold text-amber-600">{hotspot.high}</p>
+                        <p className="text-slate-500">High</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </DashboardCard>
         </section>
       </div>

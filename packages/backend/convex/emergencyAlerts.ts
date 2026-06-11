@@ -136,3 +136,33 @@ export const updateStatus = mutation({
     return alert;
   },
 });
+
+export const updateLocation = mutation({
+  args: {
+    alertId: v.id("emergencyAlerts"),
+    latitude: v.number(),
+    longitude: v.number(),
+    locationDescription: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const alert = await ctx.db.get(args.alertId);
+
+    if (alert === null || alert.userId !== user._id) {
+      throw new Error("Emergency alert not found");
+    }
+
+    if (!alert.isActive) {
+      return alert;
+    }
+
+    await ctx.db.patch(args.alertId, {
+      latitude: args.latitude,
+      longitude: args.longitude,
+      locationDescription: args.locationDescription,
+      updatedAt: Date.now(),
+    });
+
+    return await ctx.db.get(args.alertId);
+  },
+});

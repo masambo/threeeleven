@@ -37,6 +37,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const triggerAlert = useMutation(api.emergencyAlerts.trigger);
+  const updateAlertLocation = useMutation(api.emergencyAlerts.updateLocation);
   const alarmPlayer = useAudioPlayer(alarmSound);
 
   const profile = useQuery(api.users.current);
@@ -162,7 +163,7 @@ export default function HomeScreen() {
     setAlarmActive(true);
     try {
       const currentLocation = await getCurrentLocation();
-      await triggerAlert({
+      const alertId = await triggerAlert({
         type: 'panic',
         description: 'Panic button triggered from the mobile home screen.',
         locationDescription: currentLocation
@@ -171,6 +172,12 @@ export default function HomeScreen() {
         latitude: currentLocation?.latitude,
         longitude: currentLocation?.longitude,
       });
+
+      if (currentLocation !== null) {
+        setTimeout(() => {
+          void refreshPanicLocation(alertId);
+        }, 8000);
+      }
 
       Alert.alert(
         'Panic alert sent',
@@ -183,6 +190,24 @@ export default function HomeScreen() {
     } finally {
       setIsPanicSending(false);
       setAlarmActive(false);
+    }
+  };
+
+  const refreshPanicLocation = async (alertId: Awaited<ReturnType<typeof triggerAlert>>) => {
+    try {
+      const latestLocation = await getCurrentLocation();
+      if (latestLocation === null) {
+        return;
+      }
+
+      await updateAlertLocation({
+        alertId,
+        latitude: latestLocation.latitude,
+        longitude: latestLocation.longitude,
+        locationDescription: formatCurrentLocation(latestLocation, locationDisplay),
+      });
+    } catch {
+      // The original panic alert remains active even if a location refresh fails.
     }
   };
 

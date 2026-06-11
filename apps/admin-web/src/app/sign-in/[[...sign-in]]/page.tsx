@@ -26,13 +26,13 @@ export default function SignInPage() {
           </h1>
           <p className="text-base leading-relaxed text-blue-100">
             Coordinate community safety operations across Namibia. Monitor
-            live alerts, manage danger zones, and keep neighbourhoods
+            live alerts, track panic locations, and keep neighbourhoods
             informed.
           </p>
 
           <ul className="grid gap-4 pt-2">
             <FeatureRow
-              description="See emergencies, reports and danger zones in real time."
+              description="See emergencies, reports and crime hotspots in real time."
               icon={Radar}
               title="Live operational map"
             />

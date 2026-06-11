@@ -26,12 +26,13 @@ const layerConfig: Record<
 > = {
   alert: { icon: RadioTower, label: "Safety alerts" },
   emergency: { icon: ShieldAlert, label: "Emergency" },
+  heat: { icon: AlertTriangle, label: "Crime heat" },
   region: { icon: Layers, label: "Regions" },
   report: { icon: MapPin, label: "Crime reports" },
   zone: { icon: AlertTriangle, label: "Danger zones" },
 };
 
-const layerOrder: MapLayer[] = ["emergency", "report", "zone", "alert", "region"];
+const layerOrder: MapLayer[] = ["emergency", "heat", "report", "alert", "region"];
 
 export function MapPanel({
   detailStats,

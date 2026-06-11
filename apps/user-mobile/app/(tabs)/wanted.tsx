@@ -3,6 +3,7 @@ import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LIST_ARGS = {
   paginationOpts: { cursor: null, numItems: 20 },
@@ -12,10 +13,14 @@ const wantedPersonsIcon = require('../../assets/final_wanted_persons-removebg-pr
 
 export default function WantedScreen() {
   const wantedPersons = useQuery(api.wantedPersons.active, LIST_ARGS);
+  const insets = useSafeAreaInsets();
   const items = wantedPersons?.page ?? [];
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[screenStyles.container, { paddingTop: insets.top + spacing.md }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
           <Image resizeMode="contain" source={wantedPersonsIcon} style={screenStyles.heroImage} />

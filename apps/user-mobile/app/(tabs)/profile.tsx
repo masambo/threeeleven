@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SettingsRow {
   icon: keyof typeof Ionicons.glyphMap;
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const profile = useQuery(api.users.current);
   const contacts = useQuery(api.emergencyContacts.listMine, {});
   const upsertContact = useMutation(api.emergencyContacts.upsert);
+  const insets = useSafeAreaInsets();
 
   const [showAddContact, setShowAddContact] = useState(false);
   const [contactName, setContactName] = useState('');
@@ -122,11 +124,11 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={profileStyles.safe}>
       <ScrollView
-        contentContainerStyle={profileStyles.scrollContent}
+        contentContainerStyle={[profileStyles.scrollContent, { paddingBottom: insets.bottom + spacing['2xl'] }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Blue profile header ── */}
-        <View style={profileStyles.header}>
+        <View style={[profileStyles.header, { paddingTop: insets.top + spacing.md }]}>
           <View style={profileStyles.headerTop}>
             <View style={profileStyles.backPlaceholder} />
             <Text style={profileStyles.headerTitle}>Profile</Text>

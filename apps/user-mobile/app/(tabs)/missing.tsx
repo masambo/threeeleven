@@ -1,9 +1,12 @@
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
+import type { Id } from '@311-security/backend/convex/_generated/dataModel';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LIST_ARGS = {
   paginationOpts: { cursor: null, numItems: 10 },
@@ -25,8 +28,10 @@ const REPORT_TYPES: Array<{
 
 export default function MissingScreen() {
   const createReport = useMutation(api.missingReports.create);
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const publicReports = useQuery(api.missingReports.publicApproved, LIST_ARGS);
   const myReports = useQuery(api.missingReports.mine, LIST_ARGS);
+  const insets = useSafeAreaInsets();
   const [reportType, setReportType] = useState<MissingType>('missing_person');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -36,6 +41,7 @@ export default function MissingScreen() {
   const [serialNumber, setSerialNumber] = useState('');
   const [lastSeenLocation, setLastSeenLocation] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [photoImage, setPhotoImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isPerson = reportType === 'missing_person';
@@ -45,8 +51,37 @@ export default function MissingScreen() {
       return;
     }
 
+    if (isPerson && photoImage === null) {
+      Alert.alert('Photo required', 'Please upload a recent photo for a missing person report.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const photoImageIds: Id<'_storage'>[] = [];
+
+      if (photoImage !== null) {
+        const uploadUrl = await generateUploadUrl({});
+        const imageResponse = await fetch(photoImage.uri);
+        const imageBlob = await imageResponse.blob();
+        const uploadResponse = await fetch(uploadUrl, {
+          body: imageBlob,
+          headers: {
+            'Content-Type': photoImage.mimeType ?? 'image/jpeg',
+          },
+          method: 'POST',
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Photo upload failed');
+        }
+
+        const { storageId } = (await uploadResponse.json()) as {
+          storageId: Id<'_storage'>;
+        };
+        photoImageIds.push(storageId);
+      }
+
       await createReport({
         reportType,
         title: title.trim(),
@@ -57,6 +92,7 @@ export default function MissingScreen() {
         serialNumber: !isPerson ? serialNumber.trim() || undefined : undefined,
         lastSeenLocation: lastSeenLocation.trim() || undefined,
         contactPhone: contactPhone.trim() || undefined,
+        photoImageIds,
       });
       setTitle('');
       setDescription('');
@@ -66,6 +102,7 @@ export default function MissingScreen() {
       setSerialNumber('');
       setLastSeenLocation('');
       setContactPhone('');
+      setPhotoImage(null);
       Alert.alert('Report submitted', 'Your report is awaiting admin review.');
     } catch (error) {
       Alert.alert('Submission failed', error instanceof Error ? error.message : 'Try again.');
@@ -74,8 +111,31 @@ export default function MissingScreen() {
     }
   };
 
+  const pickPhotoImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Allow photo access to upload the missing person photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [4, 5],
+      mediaTypes: ['images'],
+      quality: 0.78,
+    });
+
+    if (!result.canceled) {
+      setPhotoImage(result.assets[0] ?? null);
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={screenStyles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[screenStyles.container, { paddingTop: insets.top + spacing.md }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
           <Image resizeMode="contain" source={wantedPersonsIcon} style={screenStyles.heroImage} />
@@ -114,7 +174,30 @@ export default function MissingScreen() {
         <Text style={screenStyles.sectionTitle}>Create report</Text>
         <Input onChangeText={setTitle} placeholder="Report title" value={title} />
         {isPerson ? (
-          <Input onChangeText={setPersonName} placeholder="Person name" value={personName} />
+          <>
+            <Input onChangeText={setPersonName} placeholder="Person name" value={personName} />
+            <Pressable onPress={() => void pickPhotoImage()} style={screenStyles.photoPicker}>
+              {photoImage ? (
+                <Image source={{ uri: photoImage.uri }} style={screenStyles.photoPreview} />
+              ) : (
+                <>
+                  <View style={screenStyles.photoIcon}>
+                    <Ionicons color={colors.primary} name="camera-outline" size={26} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={screenStyles.photoTitle}>Upload person photo</Text>
+                    <Text style={screenStyles.photoText}>Required for missing person reports</Text>
+                  </View>
+                </>
+              )}
+            </Pressable>
+            {photoImage ? (
+              <Pressable onPress={() => setPhotoImage(null)} style={screenStyles.removePhotoButton}>
+                <Ionicons color={colors.danger} name="trash-outline" size={15} />
+                <Text style={screenStyles.removePhotoText}>Remove photo</Text>
+              </Pressable>
+            ) : null}
+          </>
         ) : (
           <>
             <Input onChangeText={setItemName} placeholder="Item name" value={itemName} />
@@ -324,6 +407,57 @@ const screenStyles = StyleSheet.create({
   },
   textArea: {
     minHeight: 110,
+  },
+  photoPicker: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderColor: '#BFDBFE',
+    borderRadius: radii.lg,
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    gap: spacing.md,
+    minHeight: 88,
+    overflow: 'hidden',
+    padding: spacing.md,
+  },
+  photoIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  photoTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.base,
+    fontWeight: '900',
+  },
+  photoText: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  photoPreview: {
+    aspectRatio: 4 / 3,
+    borderRadius: radii.md,
+    width: '100%',
+  },
+  removePhotoButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: -spacing.xs,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  removePhotoText: {
+    color: colors.danger,
+    fontSize: fontSizes.sm,
+    fontWeight: '800',
   },
   primaryButton: {
     alignItems: 'center',

@@ -4,10 +4,12 @@ import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Alert,
+  Easing,
   Image,
   ImageSourcePropType,
   Pressable,
@@ -15,6 +17,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  Vibration,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,9 +38,65 @@ export default function HomeScreen() {
   const profile = useQuery(api.users.current);
   const alerts = useQuery(api.safetyAlerts.active, PAGINATION);
   const [isPanicSending, setIsPanicSending] = useState(false);
+  const [alarmActive, setAlarmActive] = useState(false);
+  const alarmFlash = useRef(new Animated.Value(0)).current;
+  const alarmPulse = useRef(new Animated.Value(0)).current;
 
   const locationDisplay = profile?.region ?? 'Namibia';
   const alertCount = alerts?.page.length ?? 0;
+
+  useEffect(() => {
+    if (!alarmActive) {
+      alarmFlash.stopAnimation();
+      alarmPulse.stopAnimation();
+      alarmFlash.setValue(0);
+      alarmPulse.setValue(0);
+      return;
+    }
+
+    const flashLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(alarmFlash, {
+          duration: 210,
+          easing: Easing.linear,
+          toValue: 1,
+          useNativeDriver: false,
+        }),
+        Animated.timing(alarmFlash, {
+          duration: 210,
+          easing: Easing.linear,
+          toValue: 0,
+          useNativeDriver: false,
+        }),
+      ]),
+    );
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(alarmPulse, {
+          duration: 520,
+          easing: Easing.out(Easing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(alarmPulse, {
+          duration: 520,
+          easing: Easing.in(Easing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    flashLoop.start();
+    pulseLoop.start();
+    Vibration.vibrate([0, 260, 120, 260, 120, 420], false);
+
+    return () => {
+      flashLoop.stop();
+      pulseLoop.stop();
+      Vibration.cancel();
+    };
+  }, [alarmActive, alarmFlash, alarmPulse]);
 
   const quickActions = [
     {
@@ -84,6 +143,7 @@ export default function HomeScreen() {
     }
 
     setIsPanicSending(true);
+    setAlarmActive(true);
     try {
       const currentLocation = await getCurrentLocation();
       await triggerAlert({
@@ -106,6 +166,7 @@ export default function HomeScreen() {
       Alert.alert('Panic alert failed', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setIsPanicSending(false);
+      setAlarmActive(false);
     }
   };
 
@@ -117,7 +178,7 @@ export default function HomeScreen() {
   };
 
   return (
-      <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <View style={[styles.screen, { paddingTop: Math.max(insets.top, spacing.md) }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryHeader} />
       <View pointerEvents="none" style={styles.topBackdrop} />
 
@@ -160,6 +221,60 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.panicPanel}>
+          {alarmActive ? (
+            <>
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.alarmGlow,
+                  styles.alarmGlowLeft,
+                  {
+                    backgroundColor: alarmFlash.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['rgba(37,99,235,0.25)', 'rgba(239,68,68,0.55)'],
+                    }),
+                    opacity: alarmFlash.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.45, 0.95],
+                    }),
+                    transform: [
+                      {
+                        scale: alarmPulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.16],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.alarmGlow,
+                  styles.alarmGlowRight,
+                  {
+                    backgroundColor: alarmFlash.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['rgba(239,68,68,0.5)', 'rgba(37,99,235,0.55)'],
+                    }),
+                    opacity: alarmFlash.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.95, 0.5],
+                    }),
+                    transform: [
+                      {
+                        scale: alarmPulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1.14, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </>
+          ) : null}
           <Pressable
             accessibilityLabel="Send panic alert"
             disabled={isPanicSending}
@@ -326,6 +441,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: spacing.sm,
     paddingTop: 0,
+    position: 'relative',
+  },
+  alarmGlow: {
+    borderRadius: radii.full,
+    height: 236,
+    position: 'absolute',
+    top: -17,
+    width: 154,
+  },
+  alarmGlowLeft: {
+    left: 26,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 28,
+  },
+  alarmGlowRight: {
+    right: 26,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.58,
+    shadowRadius: 28,
   },
   panicOuter: {
     alignItems: 'center',

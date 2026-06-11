@@ -18,6 +18,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ── Crime categories ───────────────────────────────────────────────────
 
@@ -138,6 +139,7 @@ const reportCrimeIcon = require('../../assets/final_report_crime-removebg-previe
 export default function ReportScreen() {
   const createReport = useMutation(api.crimeReports.create);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+  const insets = useSafeAreaInsets();
 
   // Wizard state
   const [step, setStep] = useState(0);
@@ -246,7 +248,7 @@ export default function ReportScreen() {
   return (
     <SafeAreaView style={screenStyles.safe}>
       {/* ── Screen header ── */}
-      <View style={screenStyles.header}>
+      <View style={[screenStyles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={screenStyles.headerIconWrap}>
           <Image resizeMode="contain" source={reportCrimeIcon} style={screenStyles.headerIcon} />
         </View>
@@ -492,7 +494,7 @@ export default function ReportScreen() {
       </ScrollView>
 
       {/* ── Navigation buttons ── */}
-      <View style={navStyles.bar}>
+      <View style={[navStyles.bar, { paddingBottom: insets.bottom + spacing.md }]}>
         {step > 0 && (
           <Pressable onPress={() => setStep((s) => s - 1)} style={navStyles.backBtn}>
             <Ionicons color={colors.textSecondary} name="chevron-back" size={18} />

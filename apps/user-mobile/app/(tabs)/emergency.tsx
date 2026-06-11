@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ServiceType = 'police' | 'ambulance' | 'fire' | 'gbv' | 'child_protection' | 'other';
 type EmergencyService = {
@@ -21,6 +22,37 @@ type EmergencyService = {
   phoneNumber: string;
   notes?: string;
 };
+
+const DEFAULT_SERVICES: EmergencyService[] = [
+  {
+    _id: 'police-emergency',
+    name: 'Police Emergency',
+    notes: 'National police emergency line',
+    phoneNumber: '10111',
+    type: 'police',
+  },
+  {
+    _id: 'ambulance-emergency',
+    name: 'Ambulance',
+    notes: 'Medical emergency response',
+    phoneNumber: '211111',
+    type: 'ambulance',
+  },
+  {
+    _id: 'fire-emergency',
+    name: 'Fire Brigade',
+    notes: 'Fire and rescue services',
+    phoneNumber: '211111',
+    type: 'fire',
+  },
+  {
+    _id: 'city-of-windhoek',
+    name: 'City Police / Windhoek',
+    notes: 'Municipal emergency support',
+    phoneNumber: '061211111',
+    type: 'other',
+  },
+];
 
 const ambulanceIcon = require('../../assets/emergency_ambulance-removebg-preview.webp');
 const fireTruckIcon = require('../../assets/emergency_fire_truck-removebg-preview.webp');
@@ -38,14 +70,18 @@ const SERVICE_COLORS: Record<ServiceType, { background: string; accent: string }
 
 export default function EmergencyScreen() {
   const services = useQuery(api.emergencyServices.active, {});
-  const serviceList = (services ?? []) as EmergencyService[];
+  const insets = useSafeAreaInsets();
+  const serviceList = (services ?? DEFAULT_SERVICES) as EmergencyService[];
 
   const callNumber = (phoneNumber: string) => {
     void Linking.openURL(`tel:${phoneNumber.replace(/\s/g, '')}`);
   };
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[screenStyles.container, { paddingTop: insets.top + spacing.md }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
           <Image resizeMode="contain" source={cityIcon} style={screenStyles.heroImage} />
@@ -164,6 +200,7 @@ const screenStyles = StyleSheet.create({
   },
   heroText: {
     flex: 1,
+    minWidth: 0,
   },
   eyebrow: {
     color: colors.blue200,
@@ -173,7 +210,7 @@ const screenStyles = StyleSheet.create({
   },
   title: {
     color: colors.textInverse,
-    fontSize: fontSizes['3xl'],
+    fontSize: fontSizes['2xl'],
     fontWeight: '900',
     marginTop: 2,
   },

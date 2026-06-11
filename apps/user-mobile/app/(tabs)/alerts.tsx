@@ -3,6 +3,7 @@ import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LIST_ARGS = {
   paginationOpts: { cursor: null, numItems: 20 },
@@ -12,17 +13,21 @@ const safetyAlertsIcon = require('../../assets/safety_alerts_icon-removebg-previ
 
 export default function AlertsScreen() {
   const alerts = useQuery(api.safetyAlerts.active, LIST_ARGS);
+  const insets = useSafeAreaInsets();
 
   if (alerts === undefined) {
     return (
-      <View style={screenStyles.loading}>
+      <View style={[screenStyles.loading, { paddingTop: insets.top }]}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[screenStyles.container, { paddingTop: insets.top + spacing.md }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
           <Image resizeMode="contain" source={safetyAlertsIcon} style={screenStyles.heroImage} />

@@ -3,6 +3,7 @@ import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PAGINATION = { paginationOpts: { cursor: null, numItems: 30 } } as const;
 
@@ -46,6 +47,7 @@ function formatRelativeTime(timestamp: number): string {
 
 export default function NotificationsScreen() {
   const notificationsResult = useQuery(api.notifications.mine, PAGINATION);
+  const insets = useSafeAreaInsets();
   const items = notificationsResult?.page ?? [];
 
   const unreadCount = items.filter((n) => !n.isRead).length;
@@ -53,7 +55,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={notifStyles.safe}>
       {/* ── Header ── */}
-      <View style={notifStyles.header}>
+      <View style={[notifStyles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={notifStyles.headerTitle}>Notifications</Text>
         <View style={notifStyles.headerActions}>
           <Ionicons color={colors.textInverse} name="settings-outline" size={22} />
@@ -71,7 +73,7 @@ export default function NotificationsScreen() {
       )}
 
       <ScrollView
-        contentContainerStyle={notifStyles.scrollContent}
+        contentContainerStyle={[notifStyles.scrollContent, { paddingBottom: insets.bottom + spacing.xl }]}
         showsVerticalScrollIndicator={false}
       >
         {items.length === 0 ? (

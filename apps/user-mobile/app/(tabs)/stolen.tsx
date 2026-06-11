@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LIST_ARGS = {
   paginationOpts: { cursor: null, numItems: 10 },
@@ -18,6 +19,7 @@ function normalizeSerial(value: string) {
 export default function StolenScreen() {
   const reportItem = useMutation(api.stolenItems.report);
   const myItems = useQuery(api.stolenItems.mine, LIST_ARGS);
+  const insets = useSafeAreaInsets();
   const [searchSerial, setSearchSerial] = useState('');
   const [itemName, setItemName] = useState('');
   const [itemCategory, setItemCategory] = useState('Phone');
@@ -66,7 +68,10 @@ export default function StolenScreen() {
   const matches = searchResults ?? [];
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[screenStyles.container, { paddingTop: insets.top + spacing.md }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={screenStyles.hero}>
         <View style={screenStyles.heroIcon}>
           <Image resizeMode="contain" source={serialCheckIcon} style={screenStyles.heroImage} />

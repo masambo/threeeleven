@@ -36,6 +36,15 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const photoImageIds = args.photoImageIds ?? [];
+    const photoUrls =
+      args.photoUrls ??
+      (
+        await Promise.all(
+          photoImageIds.map(async (photoImageId) => await ctx.storage.getUrl(photoImageId)),
+        )
+      ).filter((url): url is string => url !== null);
+
     const reportId = await ctx.db.insert("missingReports", {
       userId: user._id,
       reportType: args.reportType,
@@ -50,8 +59,8 @@ export const create = mutation({
       serialNumber: args.serialNumber,
       contactPhone: args.contactPhone,
       contactEmail: args.contactEmail,
-      photoImageIds: args.photoImageIds ?? [],
-      photoUrls: args.photoUrls ?? [],
+      photoImageIds,
+      photoUrls,
       status: "pending",
       updatedAt: Date.now(),
     });

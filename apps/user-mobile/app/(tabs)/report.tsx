@@ -1,5 +1,5 @@
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
-import { getCurrentLocation } from '@/lib/location';
+import { getKnownLocation } from '@/lib/location';
 import { api } from '@311-security/backend/convex/_generated/api';
 import type { Id } from '@311-security/backend/convex/_generated/dataModel';
 import { Ionicons } from '@expo/vector-icons';
@@ -160,7 +160,7 @@ export default function ReportScreen() {
 
     setIsSubmitting(true);
     try {
-      const currentLocation = await getCurrentLocation();
+      const currentLocation = await getKnownLocation();
       const evidenceImageIds: Id<'_storage'>[] = [];
 
       if (evidenceImage !== null) {

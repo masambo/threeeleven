@@ -1,7 +1,9 @@
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
+import { useAuth } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -24,7 +26,36 @@ interface SettingsRow {
   onPress?: () => void;
 }
 
+const clerkConfigured = Boolean(process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function ProfileScreen() {
+  return clerkConfigured ? <ClerkProfileScreen /> : <DemoProfileScreen />;
+}
+
+function DemoProfileScreen() {
+  return (
+    <ProfileContent
+      onSignOut={() => {
+        Alert.alert('Demo mode', 'Clerk login is not configured in this build.');
+      }}
+    />
+  );
+}
+
+function ClerkProfileScreen() {
+  const router = useRouter();
+  const { signOut } = useAuth();
+
+  const handleSignOut = () => {
+    void signOut().then(() => {
+      router.replace('/sign-in');
+    });
+  };
+
+  return <ProfileContent onSignOut={handleSignOut} />;
+}
+
+function ProfileContent({ onSignOut }: { onSignOut: () => void }) {
   const profile = useQuery(api.users.current);
   const contacts = useQuery(api.emergencyContacts.listMine, {});
   const upsertContact = useMutation(api.emergencyContacts.upsert);
@@ -64,10 +95,6 @@ export default function ProfileScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleSignOut = () => {
-    Alert.alert('Demo mode', 'Clerk login is disabled for now, so there is no session to sign out.');
   };
 
   const ACCOUNT_SETTINGS: SettingsRow[] = [
@@ -250,7 +277,7 @@ export default function ProfileScreen() {
           <SettingsSection label="Support" rows={SUPPORT_SETTINGS} />
 
           {/* ── Sign out ── */}
-          <Pressable onPress={handleSignOut} style={profileStyles.signOutBtn}>
+          <Pressable onPress={onSignOut} style={profileStyles.signOutBtn}>
             <Ionicons color={colors.danger} name="log-out-outline" size={20} />
             <Text style={profileStyles.signOutText}>Sign Out</Text>
           </Pressable>

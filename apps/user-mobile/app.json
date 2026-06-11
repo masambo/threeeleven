@@ -52,7 +52,9 @@
         }
       ],
       "expo-router",
-      "expo-audio"
+      "@clerk/expo",
+      "expo-audio",
+      "expo-web-browser"
     ]
   }
 }

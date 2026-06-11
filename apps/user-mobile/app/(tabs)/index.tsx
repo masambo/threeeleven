@@ -1,4 +1,9 @@
-import { formatCurrentLocation, getCurrentLocation } from '@/lib/location';
+import {
+  formatCurrentLocation,
+  getCurrentLocation,
+  getKnownLocation,
+  getLocationPermissionStatus,
+} from '@/lib/location';
 import { colors, fontSizes, radii, shadows, spacing } from '@/lib/theme';
 import { api } from '@311-security/backend/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,10 +49,13 @@ export default function HomeScreen() {
   const alerts = useQuery(api.safetyAlerts.active, PAGINATION);
   const [isPanicSending, setIsPanicSending] = useState(false);
   const [alarmActive, setAlarmActive] = useState(false);
+  const [knownLocationLabel, setKnownLocationLabel] = useState<string | null>(null);
+  const [locationStatusLabel, setLocationStatusLabel] = useState('Location checked on panic');
   const alarmFlash = useRef(new Animated.Value(0)).current;
   const alarmPulse = useRef(new Animated.Value(0)).current;
 
   const locationDisplay = profile?.region ?? 'Namibia';
+  const homeLocationDisplay = knownLocationLabel ?? locationDisplay;
   const alertCount = alerts?.page.length ?? 0;
 
   useEffect(() => {
@@ -114,6 +122,35 @@ export default function HomeScreen() {
       Vibration.cancel();
     };
   }, [alarmActive, alarmFlash, alarmPlayer, alarmPulse]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadKnownLocation() {
+      const permissionStatus = await getLocationPermissionStatus();
+      if (!isMounted) {
+        return;
+      }
+
+      if (permissionStatus !== 'granted') {
+        setKnownLocationLabel(null);
+        setLocationStatusLabel('GPS will be requested only for panic');
+        return;
+      }
+
+      setLocationStatusLabel('Location enabled');
+      const knownLocation = await getKnownLocation();
+      if (isMounted && knownLocation !== null) {
+        setKnownLocationLabel(`GPS ${knownLocation.latitude.toFixed(4)}, ${knownLocation.longitude.toFixed(4)}`);
+      }
+    }
+
+    void loadKnownLocation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const quickActions = [
     {
@@ -229,9 +266,9 @@ export default function HomeScreen() {
             <Ionicons color={colors.textInverse} name="location" size={18} />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.locationLabel}>Current area</Text>
+            <Text style={styles.locationLabel}>{locationStatusLabel}</Text>
             <Text numberOfLines={1} style={styles.locationValue}>
-              {locationDisplay}
+              {homeLocationDisplay}
             </Text>
           </View>
         </View>
